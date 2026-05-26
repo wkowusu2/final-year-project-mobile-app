@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "move_with_vim",
-    "slug": "move_with_vim",
+    "name": "RoadPulse Ghana",
+    "slug": "roadpulse-ghana",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "movewithvim",
+    "scheme": "roadpulseghana",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -27,6 +27,13 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow RoadPulse Ghana to collect GPS movement data while tracking is active.",
+          "locationAlwaysAndWhenInUsePermission": "Allow RoadPulse Ghana to collect GPS movement data while tracking is active."
+        }
+      ],
       [
         "expo-splash-screen",
         {

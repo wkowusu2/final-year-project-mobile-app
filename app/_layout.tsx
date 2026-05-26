@@ -1,24 +1,29 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import { Colors } from '@/src/constants/colors';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+    <>
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: Colors.background },
+          headerShadowVisible: false,
+          headerTintColor: Colors.textPrimary,
+          headerTitleStyle: { fontWeight: '700' },
+          contentStyle: { backgroundColor: Colors.background },
+        }}>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false }} />
+        <Stack.Screen name="register" options={{ title: 'Driver Registration' }} />
+        <Stack.Screen name="permissions" options={{ title: 'Location Access' }} />
+        <Stack.Screen name="home" options={{ title: 'RoadPulse Ghana' }} />
+        <Stack.Screen name="summary" options={{ title: 'Tracking Summary' }} />
+        <Stack.Screen name="settings" options={{ title: 'Settings' }} />
       </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+      <StatusBar style="dark" />
+    </>
   );
 }
