@@ -2,28 +2,35 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
-import { Colors } from '@/src/constants/colors';
+import { useAppTheme } from '@/src/hooks/useAppTheme';
 
 export default function RootLayout() {
+  const theme = useAppTheme();
+
   return (
     <>
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: Colors.background },
-          headerShadowVisible: false,
-          headerTintColor: Colors.textPrimary,
-          headerTitleStyle: { fontWeight: '700' },
-          contentStyle: { backgroundColor: Colors.background },
+          headerShown: false,
+          contentStyle: { backgroundColor: theme.background },
+          animation: 'slide_from_right',
         }}>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="welcome" options={{ headerShown: false }} />
-        <Stack.Screen name="register" options={{ title: 'Driver Registration' }} />
-        <Stack.Screen name="permissions" options={{ title: 'Location Access' }} />
-        <Stack.Screen name="home" options={{ title: 'RoadPulse Ghana' }} />
-        <Stack.Screen name="summary" options={{ title: 'Tracking Summary' }} />
-        <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="active-tracking" />
+        <Stack.Screen name="report-incident" />
+        <Stack.Screen name="incident-details" />
+        <Stack.Screen name="my-reports" />
+        <Stack.Screen name="route-intelligence" />
+        <Stack.Screen name="notifications" />
+        <Stack.Screen name="rewards" />
+        <Stack.Screen name="settings" />
+        <Stack.Screen name="traffic-heatmap" />
+        <Stack.Screen name="traffic-insights" />
+        <Stack.Screen name="government-analytics" />
       </Stack>
-      <StatusBar style="dark" />
+      <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
     </>
   );
 }
