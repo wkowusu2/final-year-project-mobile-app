@@ -1,19 +1,34 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { radius, spacing } from '@/src/constants/design';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
 
-function normalizePhone(value: string) {
-  return value.replace(/\D/g, '').slice(0, 10);
+function normalizeOtp(value: string) {
+  return value.replace(/\D/g, '').slice(0, 6);
 }
 
-export default function SignUpScreen() {
-  const theme = useAppTheme();
-  const [phone, setPhone] = useState('');
+function formatPhone(value: string) {
+  if (value.length <= 3) {
+    return value;
+  }
 
-  const isValid = phone.length === 10 && phone.startsWith('0');
+  if (value.length <= 6) {
+    return `${value.slice(0, 3)} ${value.slice(3)}`;
+  }
+
+  return `${value.slice(0, 3)} ${value.slice(3, 6)} ${value.slice(6)}`;
+}
+
+export default function OtpScreen() {
+  const theme = useAppTheme();
+  const params = useLocalSearchParams<{ phone?: string; mode?: string }>();
+  const [otp, setOtp] = useState('');
+
+  const phone = typeof params.phone === 'string' ? params.phone : '';
+  const mode = params.mode === 'signup' ? 'signup' : 'login';
+  const isValid = otp.length === 6;
   const colors = useMemo(
     () => ({
       background: theme.mode === 'dark' ? '#0F172A' : '#FFF7F3',
@@ -25,53 +40,56 @@ export default function SignUpScreen() {
       accent: '#F97316',
       accentPressed: '#EA580C',
       field: theme.mode === 'dark' ? '#0F172A' : '#FFFDFB',
+      chip: theme.mode === 'dark' ? '#1F2937' : '#FFF1E6',
     }),
     [theme.mode],
   );
 
-  function continueToOtp() {
+  const title = mode === 'signup' ? 'Verify phone number' : 'Enter verification code';
+  const subtitle = phone ? `We sent a 6-digit code to ${formatPhone(phone)}.` : 'Enter the 6-digit code sent to your phone.';
+
+  function goBack() {
+    router.back();
+  }
+
+  function continueToPermissions() {
     if (!isValid) {
       return;
     }
 
-    router.push({ pathname: '/(auth)/otp', params: { phone, mode: 'signup' } });
+    router.replace('/(auth)/permissions');
   }
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <View style={[styles.panel, { backgroundColor: colors.card }]}>
         <View style={styles.hero}>
-          <View style={styles.illustrationWrap}>
-            <View style={styles.illustrationPhone}>
-              <View style={styles.illustrationScreen} />
-            </View>
-            <View style={styles.illustrationBadge}>
-              <Text style={styles.illustrationBadgeText}>OTP</Text>
-            </View>
+          <View style={[styles.badge, { backgroundColor: colors.chip }]}>
+            <Text style={styles.badgeText}>OTP</Text>
           </View>
-          <Text style={[styles.title, { color: colors.text }]}>Create account</Text>
-          <Text style={[styles.description, { color: colors.subtext }]}>Get started with your Ghana phone number.</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+          <Text style={[styles.description, { color: colors.subtext }]}>{subtitle}</Text>
         </View>
 
         <View style={styles.form}>
-          <Text style={[styles.label, { color: colors.text }]}>Phone number</Text>
+          <Text style={[styles.label, { color: colors.text }]}>Verification code</Text>
           <View style={[styles.inputWrap, { backgroundColor: colors.field, borderColor: colors.border }]}>
             <TextInput
-              value={phone}
-              onChangeText={(value) => setPhone(normalizePhone(value))}
-              placeholder="024 123 4567"
+              value={otp}
+              onChangeText={(value) => setOtp(normalizeOtp(value))}
+              placeholder="000000"
               placeholderTextColor={colors.muted}
               keyboardType="number-pad"
-              maxLength={10}
+              maxLength={6}
               style={[styles.input, { color: colors.text }]}
             />
           </View>
-          <Text style={[styles.hint, { color: colors.subtext }]}>Use a 10-digit Ghana phone number starting with 0.</Text>
+          <Text style={[styles.hint, { color: colors.subtext }]}>Use the 6-digit code from the SMS.</Text>
 
           <Pressable
             accessibilityRole="button"
             disabled={!isValid}
-            onPress={continueToOtp}
+            onPress={continueToPermissions}
             style={({ pressed }) => [
               styles.primaryButton,
               {
@@ -79,14 +97,18 @@ export default function SignUpScreen() {
                 opacity: !isValid ? 0.72 : 1,
               },
             ]}>
-            <Text style={styles.primaryButtonText}>Continue</Text>
+            <Text style={styles.primaryButtonText}>Verify</Text>
+          </Pressable>
+
+          <Pressable accessibilityRole="button" onPress={goBack} style={styles.secondaryButton}>
+            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Change phone number</Text>
           </Pressable>
         </View>
 
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.subtext }]}>Already have an account?</Text>
-          <Pressable onPress={() => router.replace('/(auth)/login')}>
-            <Text style={[styles.footerLink, { color: colors.text }]}>Sign in</Text>
+          <Text style={[styles.footerText, { color: colors.subtext }]}>Didn&apos;t receive a code?</Text>
+          <Pressable>
+            <Text style={[styles.footerLink, { color: colors.text }]}>Resend code</Text>
           </Pressable>
         </View>
       </View>
@@ -111,41 +133,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
   },
-  illustrationWrap: {
-    width: 122,
-    height: 122,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  illustrationPhone: {
-    width: 72,
-    height: 104,
-    borderRadius: 22,
-    borderWidth: 3,
-    borderColor: '#FDBA74',
-    backgroundColor: '#FFF7ED',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  illustrationScreen: {
-    width: 42,
-    height: 62,
-    borderRadius: 14,
-    backgroundColor: '#FED7AA',
-  },
-  illustrationBadge: {
-    position: 'absolute',
-    right: 10,
-    bottom: 18,
-    backgroundColor: '#F97316',
+  badge: {
     borderRadius: radius.round,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
   },
-  illustrationBadgeText: {
-    color: '#FFFFFF',
+  badgeText: {
+    color: '#F97316',
     fontSize: 12,
     fontWeight: '800',
+    letterSpacing: 0.8,
   },
   title: {
     fontSize: 30,
@@ -172,9 +169,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   input: {
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: 1,
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 8,
+    textAlign: 'center',
   },
   hint: {
     fontSize: 13,
@@ -191,6 +189,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '800',
+  },
+  secondaryButton: {
+    minHeight: 52,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
   footer: {
     flexDirection: 'row',
