@@ -1,13 +1,9 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { radius, spacing } from '@/src/constants/design';
-import { useAppTheme } from '@/src/hooks/useAppTheme';
-
-function normalizeOtp(value: string) {
-  return value.replace(/\D/g, '').slice(0, 6);
-}
+import { radius, spacing } from "@/src/constants/design";
+import { useAppTheme } from "@/src/hooks/useAppTheme";
 
 function formatPhone(value: string) {
   if (value.length <= 3) {
@@ -24,29 +20,67 @@ function formatPhone(value: string) {
 export default function OtpScreen() {
   const theme = useAppTheme();
   const params = useLocalSearchParams<{ phone?: string; mode?: string }>();
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState(Array(6).fill("").join(""));
+  const inputRefs = useRef<(TextInput | null)[]>([]);
 
-  const phone = typeof params.phone === 'string' ? params.phone : '';
-  const mode = params.mode === 'signup' ? 'signup' : 'login';
-  const isValid = otp.length === 6;
+  const phone = typeof params.phone === "string" ? params.phone : "";
+  const mode = params.mode === "signup" ? "signup" : "login";
+  const otpDigits = otp.padEnd(6, "").slice(0, 6).split("");
+  const isValid = otpDigits.length === 6 && otpDigits.every(Boolean);
   const colors = useMemo(
     () => ({
-      background: theme.mode === 'dark' ? '#0F172A' : '#FFF7F3',
-      card: theme.mode === 'dark' ? '#182235' : '#FFFFFF',
-      text: theme.mode === 'dark' ? '#F8FAFC' : '#0F172A',
-      subtext: theme.mode === 'dark' ? '#CBD5E1' : '#475569',
-      muted: theme.mode === 'dark' ? '#94A3B8' : '#94A3B8',
-      border: theme.mode === 'dark' ? '#334155' : '#E2E8F0',
-      accent: '#F97316',
-      accentPressed: '#EA580C',
-      field: theme.mode === 'dark' ? '#0F172A' : '#FFFDFB',
-      chip: theme.mode === 'dark' ? '#1F2937' : '#FFF1E6',
+      background: theme.mode === "dark" ? "#0F172A" : "#FFF7F3",
+      card: theme.mode === "dark" ? "#182235" : "#FFFFFF",
+      text: theme.mode === "dark" ? "#F8FAFC" : "#0F172A",
+      subtext: theme.mode === "dark" ? "#CBD5E1" : "#475569",
+      muted: theme.mode === "dark" ? "#94A3B8" : "#94A3B8",
+      border: theme.mode === "dark" ? "#334155" : "#E2E8F0",
+      accent: "#F97316",
+      accentPressed: "#EA580C",
+      field: theme.mode === "dark" ? "#0F172A" : "#FFFDFB",
+      chip: theme.mode === "dark" ? "#1F2937" : "#FFF1E6",
     }),
     [theme.mode],
   );
 
-  const title = mode === 'signup' ? 'Verify phone number' : 'Enter verification code';
-  const subtitle = phone ? `We sent a 6-digit code to ${formatPhone(phone)}.` : 'Enter the 6-digit code sent to your phone.';
+  const title =
+    mode === "signup" ? "Verify phone number" : "Enter verification code";
+  const subtitle = phone
+    ? `We sent a 6-digit code to ${formatPhone(phone)}.`
+    : "Enter the 6-digit code sent to your phone.";
+
+  useEffect(() => {
+    inputRefs.current[0]?.focus();
+  }, []);
+
+  function updateOtpDigit(index: number, value: string) {
+    const digit = value.replace(/\D/g, "").slice(-1);
+    const nextOtp = [...otpDigits];
+
+    nextOtp[index] = digit;
+    setOtp(nextOtp.join(""));
+
+    if (digit && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  }
+
+  function handleOtpKeyPress(index: number, key: string) {
+    if (key !== "Backspace") {
+      return;
+    }
+
+    if (otpDigits[index]) {
+      const nextOtp = [...otpDigits];
+      nextOtp[index] = "";
+      setOtp(nextOtp.join(""));
+      return;
+    }
+
+    if (index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  }
 
   function goBack() {
     router.back();
@@ -57,7 +91,7 @@ export default function OtpScreen() {
       return;
     }
 
-    router.replace('/(auth)/permissions');
+    router.replace("/(auth)/permissions");
   }
 
   return (
@@ -68,23 +102,47 @@ export default function OtpScreen() {
             <Text style={styles.badgeText}>OTP</Text>
           </View>
           <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-          <Text style={[styles.description, { color: colors.subtext }]}>{subtitle}</Text>
+          <Text style={[styles.description, { color: colors.subtext }]}>
+            {subtitle}
+          </Text>
         </View>
 
         <View style={styles.form}>
-          <Text style={[styles.label, { color: colors.text }]}>Verification code</Text>
-          <View style={[styles.inputWrap, { backgroundColor: colors.field, borderColor: colors.border }]}>
-            <TextInput
-              value={otp}
-              onChangeText={(value) => setOtp(normalizeOtp(value))}
-              placeholder="000000"
-              placeholderTextColor={colors.muted}
-              keyboardType="number-pad"
-              maxLength={6}
-              style={[styles.input, { color: colors.text }]}
-            />
+          <Text style={[styles.label, { color: colors.text }]}>
+            Verification code
+          </Text>
+          <View style={styles.otpRow}>
+            {Array.from({ length: 6 }, (_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.otpBox,
+                  {
+                    backgroundColor: colors.field,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <TextInput
+                  ref={(ref) => {
+                    inputRefs.current[index] = ref;
+                  }}
+                  value={otpDigits[index]}
+                  onChangeText={(value) => updateOtpDigit(index, value)}
+                  onKeyPress={({ nativeEvent }) =>
+                    handleOtpKeyPress(index, nativeEvent.key)
+                  }
+                  keyboardType="number-pad"
+                  maxLength={1}
+                  style={[styles.otpInput, { color: colors.text }]}
+                  textAlign="center"
+                />
+              </View>
+            ))}
           </View>
-          <Text style={[styles.hint, { color: colors.subtext }]}>Use the 6-digit code from the SMS.</Text>
+          <Text style={[styles.hint, { color: colors.subtext }]}>
+            Use the 6-digit code from the SMS.
+          </Text>
 
           <Pressable
             accessibilityRole="button"
@@ -93,22 +151,37 @@ export default function OtpScreen() {
             style={({ pressed }) => [
               styles.primaryButton,
               {
-                backgroundColor: !isValid ? '#FDBA74' : pressed ? colors.accentPressed : colors.accent,
+                backgroundColor: !isValid
+                  ? "#FDBA74"
+                  : pressed
+                    ? colors.accentPressed
+                    : colors.accent,
                 opacity: !isValid ? 0.72 : 1,
               },
-            ]}>
+            ]}
+          >
             <Text style={styles.primaryButtonText}>Verify</Text>
           </Pressable>
 
-          <Pressable accessibilityRole="button" onPress={goBack} style={styles.secondaryButton}>
-            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Change phone number</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={goBack}
+            style={styles.secondaryButton}
+          >
+            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+              Change phone number
+            </Text>
           </Pressable>
         </View>
 
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.subtext }]}>Didn&apos;t receive a code?</Text>
+          <Text style={[styles.footerText, { color: colors.subtext }]}>
+            Didn&apos;t receive a code?
+          </Text>
           <Pressable>
-            <Text style={[styles.footerLink, { color: colors.text }]}>Resend code</Text>
+            <Text style={[styles.footerLink, { color: colors.text }]}>
+              Resend code
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -121,7 +194,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xxl,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   panel: {
     borderRadius: 32,
@@ -130,7 +203,7 @@ const styles = StyleSheet.create({
     gap: spacing.xxl,
   },
   hero: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: spacing.md,
   },
   badge: {
@@ -139,40 +212,49 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   badgeText: {
-    color: '#F97316',
+    color: "#F97316",
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 0.8,
   },
   title: {
     fontSize: 30,
-    fontWeight: '900',
-    textAlign: 'center',
+    fontWeight: "900",
+    textAlign: "center",
   },
   description: {
     fontSize: 15,
     lineHeight: 22,
-    textAlign: 'center',
+    textAlign: "center",
   },
   form: {
     gap: spacing.sm,
+    // backgroundColor: "red",
   },
   label: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
-  inputWrap: {
+  otpRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignSelf: "center",
+    gap: spacing.xs,
+  },
+  otpBox: {
+    width: 46,
+    height: 58,
     borderWidth: 1,
     borderRadius: radius.lg,
-    minHeight: 58,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  input: {
+  otpInput: {
+    width: "100%",
     fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: 8,
-    textAlign: 'center',
+    fontWeight: "800",
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   hint: {
     fontSize: 13,
@@ -182,30 +264,30 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     minHeight: 56,
     borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   secondaryButton: {
     minHeight: 52,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: '#FED7AA',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: "#FED7AA",
+    alignItems: "center",
+    justifyContent: "center",
   },
   secondaryButtonText: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     gap: spacing.xs,
   },
   footerText: {
@@ -213,6 +295,6 @@ const styles = StyleSheet.create({
   },
   footerLink: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 });
