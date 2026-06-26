@@ -27,26 +27,30 @@ export const onboardingSlides: OnboardingSlide[] = [
   {
     id: 'planning',
     title: 'Help Improve Traffic Planning',
-    description: 'Contribute anonymous movement insights that help city planners understand how roads behave every day.',
-    accent: '#2563EB',
+    description:
+      'Your commute data helps city planners understand road usage patterns and build smarter infrastructure for everyone.',
+    accent: '#5B21F0',
   },
   {
     id: 'anonymous',
     title: 'Share Anonymous Traffic Data',
-    description: 'TrafficPulse protects your identity while converting trips into congestion intelligence for smarter mobility.',
-    accent: '#14B8A6',
+    description:
+      'We never collect personal information. Your speed and location data is fully anonymized before contributing to the network.',
+    accent: '#14C7B3',
   },
   {
     id: 'live',
     title: 'View Live Traffic Conditions',
-    description: 'Check congestion colors, incident clusters, and route quality before you leave or while you commute.',
-    accent: '#F59E0B',
+    description:
+      'See real-time traffic updates on your route. Green for clear roads, yellow for slow traffic, red for heavy congestion.',
+    accent: '#22C55E',
   },
   {
     id: 'cities',
     title: 'Support Smarter Cities',
-    description: 'Help commuters, agencies, and emergency teams make faster traffic decisions with community-powered data.',
-    accent: '#22C55E',
+    description:
+      'Your data helps governments prioritize road improvements, optimize signal timing, and reduce commute times for millions.',
+    accent: '#A855F7',
   },
 ];
 

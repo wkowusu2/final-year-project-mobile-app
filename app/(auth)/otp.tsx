@@ -1,64 +1,45 @@
-import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-
-import { radius, spacing } from "@/src/constants/design";
-import { useAppTheme } from "@/src/hooks/useAppTheme";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 function formatPhone(value: string) {
-  if (value.length <= 3) {
-    return value;
+  const digits = value.replace(/\D/g, '').slice(0, 10);
+  if (digits.length <= 4) {
+    return digits;
   }
 
-  if (value.length <= 6) {
-    return `${value.slice(0, 3)} ${value.slice(3)}`;
+  if (digits.length <= 7) {
+    return `${digits.slice(0, 4)} ${digits.slice(4)}`;
   }
 
-  return `${value.slice(0, 3)} ${value.slice(3, 6)} ${value.slice(6)}`;
+  return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
 }
 
 export default function OtpScreen() {
-  const theme = useAppTheme();
   const params = useLocalSearchParams<{ phone?: string; mode?: string }>();
-  const [otp, setOtp] = useState(Array(6).fill("").join(""));
+  const [otp, setOtp] = useState(Array(6).fill('').join(''));
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
-  const phone = typeof params.phone === "string" ? params.phone : "";
-  const mode = params.mode === "signup" ? "signup" : "login";
-  const otpDigits = otp.padEnd(6, "").slice(0, 6).split("");
-  const isValid = otpDigits.length === 6 && otpDigits.every(Boolean);
-  const colors = useMemo(
-    () => ({
-      background: theme.mode === "dark" ? "#0F172A" : "#FFF7F3",
-      card: theme.mode === "dark" ? "#182235" : "#FFFFFF",
-      text: theme.mode === "dark" ? "#F8FAFC" : "#0F172A",
-      subtext: theme.mode === "dark" ? "#CBD5E1" : "#475569",
-      muted: theme.mode === "dark" ? "#94A3B8" : "#94A3B8",
-      border: theme.mode === "dark" ? "#334155" : "#E2E8F0",
-      accent: "#F97316",
-      accentPressed: "#EA580C",
-      field: theme.mode === "dark" ? "#0F172A" : "#FFFDFB",
-      chip: theme.mode === "dark" ? "#1F2937" : "#FFF1E6",
-    }),
-    [theme.mode],
-  );
+  const phone = typeof params.phone === 'string' ? params.phone : '';
+  const mode = params.mode === 'signup' ? 'signup' : 'login';
+  const otpDigits = otp.padEnd(6, '').slice(0, 6).split('');
+  const isValid = otpDigits.every(Boolean);
 
-  const title =
-    mode === "signup" ? "Verify phone number" : "Enter verification code";
+  const title = mode === 'signup' ? 'Verify OTP' : 'Enter Verification Code';
   const subtitle = phone
-    ? `We sent a 6-digit code to ${formatPhone(phone)}.`
-    : "Enter the 6-digit code sent to your phone.";
+    ? `We sent a 6-digit code to +233 ${formatPhone(phone)}`
+    : 'Enter the 6-digit code sent to your phone.';
 
   useEffect(() => {
     inputRefs.current[0]?.focus();
   }, []);
 
   function updateOtpDigit(index: number, value: string) {
-    const digit = value.replace(/\D/g, "").slice(-1);
+    const digit = value.replace(/\D/g, '').slice(-1);
     const nextOtp = [...otpDigits];
-
     nextOtp[index] = digit;
-    setOtp(nextOtp.join(""));
+    setOtp(nextOtp.join(''));
 
     if (digit && index < 5) {
       inputRefs.current[index + 1]?.focus();
@@ -66,14 +47,14 @@ export default function OtpScreen() {
   }
 
   function handleOtpKeyPress(index: number, key: string) {
-    if (key !== "Backspace") {
+    if (key !== 'Backspace') {
       return;
     }
 
     if (otpDigits[index]) {
       const nextOtp = [...otpDigits];
-      nextOtp[index] = "";
-      setOtp(nextOtp.join(""));
+      nextOtp[index] = '';
+      setOtp(nextOtp.join(''));
       return;
     }
 
@@ -82,108 +63,76 @@ export default function OtpScreen() {
     }
   }
 
-  function goBack() {
-    router.back();
-  }
-
   function continueToPermissions() {
     if (!isValid) {
       return;
     }
 
-    router.replace("/(auth)/permissions");
+    router.replace('/(auth)/permissions');
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View style={[styles.panel, { backgroundColor: colors.card }]}>
-        <View style={styles.hero}>
-          <View style={[styles.badge, { backgroundColor: colors.chip }]}>
-            <Text style={styles.badgeText}>OTP</Text>
-          </View>
-          <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-          <Text style={[styles.description, { color: colors.subtext }]}>
-            {subtitle}
-          </Text>
+    <View style={styles.screen}>
+      <View style={styles.topIcon}>
+        <View style={styles.topIconBase}>
+          <View style={[styles.topIconBlend, { backgroundColor: '#5B21F0' }]} />
+          <View style={[styles.topIconBlend, styles.topIconBlendRight, { backgroundColor: '#14B8A6' }]} />
+          <MaterialCommunityIcons color="#FFFFFF" name="shield-check" size={28} />
         </View>
+      </View>
 
-        <View style={styles.form}>
-          <Text style={[styles.label, { color: colors.text }]}>
-            Verification code
-          </Text>
+      <View style={styles.content}>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
+      </View>
+
+      <View style={styles.form}>
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Verification Code</Text>
           <View style={styles.otpRow}>
             {Array.from({ length: 6 }, (_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.otpBox,
-                  {
-                    backgroundColor: colors.field,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
+              <View key={index} style={[styles.otpBox, otpDigits[index] ? styles.otpBoxActive : null]}>
                 <TextInput
                   ref={(ref) => {
                     inputRefs.current[index] = ref;
                   }}
                   value={otpDigits[index]}
                   onChangeText={(value) => updateOtpDigit(index, value)}
-                  onKeyPress={({ nativeEvent }) =>
-                    handleOtpKeyPress(index, nativeEvent.key)
-                  }
+                  onKeyPress={({ nativeEvent }) => handleOtpKeyPress(index, nativeEvent.key)}
                   keyboardType="number-pad"
                   maxLength={1}
-                  style={[styles.otpInput, { color: colors.text }]}
                   textAlign="center"
+                  style={styles.otpInput}
                 />
               </View>
             ))}
           </View>
-          <Text style={[styles.hint, { color: colors.subtext }]}>
-            Use the 6-digit code from the SMS.
-          </Text>
-
-          <Pressable
-            accessibilityRole="button"
-            disabled={!isValid}
-            onPress={continueToPermissions}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              {
-                backgroundColor: !isValid
-                  ? "#FDBA74"
-                  : pressed
-                    ? colors.accentPressed
-                    : colors.accent,
-                opacity: !isValid ? 0.72 : 1,
-              },
-            ]}
-          >
-            <Text style={styles.primaryButtonText}>Verify</Text>
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            onPress={goBack}
-            style={styles.secondaryButton}
-          >
-            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
-              Change phone number
-            </Text>
-          </Pressable>
+          <Text style={styles.helperText}>Use the 6-digit code from the SMS.</Text>
         </View>
+
+        <Pressable
+          accessibilityRole="button"
+          disabled={!isValid}
+          onPress={continueToPermissions}
+          style={({ pressed }) => [
+            styles.primaryButton,
+            !isValid ? styles.primaryButtonDisabled : null,
+            pressed && isValid ? styles.primaryButtonPressed : null,
+          ]}>
+          <Text style={styles.primaryButtonText}>Verify OTP</Text>
+          <MaterialCommunityIcons color="#FFFFFF" name="chevron-right" size={20} />
+        </Pressable>
 
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.subtext }]}>
-            Didn&apos;t receive a code?
-          </Text>
+          <Text style={styles.footerText}>Didn&apos;t receive a code?</Text>
           <Pressable>
-            <Text style={[styles.footerLink, { color: colors.text }]}>
-              Resend code
-            </Text>
+            <Text style={styles.footerLink}>Resend Code</Text>
           </Pressable>
         </View>
+
+        <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.secondaryAction}>
+          <Text style={styles.secondaryActionText}>Change phone number</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -192,109 +141,139 @@ export default function OtpScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xxl,
-    justifyContent: "center",
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    paddingTop: 48,
+    paddingBottom: 18,
   },
-  panel: {
-    borderRadius: 32,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xxl,
-    gap: spacing.xxl,
+  topIcon: {
+    marginBottom: 14,
   },
-  hero: {
-    alignItems: "center",
-    gap: spacing.md,
+  topIconBase: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4F46E5',
   },
-  badge: {
-    borderRadius: radius.round,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+  topIconBlend: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    opacity: 0.95,
   },
-  badgeText: {
-    color: "#F97316",
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.8,
+  topIconBlendRight: {
+    left: '50%',
+  },
+  content: {
+    gap: 8,
+    paddingBottom: 24,
   },
   title: {
-    fontSize: 30,
-    fontWeight: "900",
-    textAlign: "center",
+    color: '#1B1D35',
+    fontSize: 28,
+    lineHeight: 32,
+    fontWeight: '900',
+    letterSpacing: -0.4,
   },
-  description: {
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: "center",
+  subtitle: {
+    color: '#7C8194',
+    fontSize: 14,
+    lineHeight: 20,
   },
   form: {
-    gap: spacing.sm,
-    // backgroundColor: "red",
+    flex: 1,
+    gap: 18,
+    paddingTop: 18,
+  },
+  fieldGroup: {
+    gap: 8,
   },
   label: {
+    color: '#50566B',
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   otpRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignSelf: "center",
-    gap: spacing.xs,
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
   },
   otpBox: {
-    width: 46,
-    height: 58,
+    flex: 1,
+    height: 54,
     borderWidth: 1,
-    borderRadius: radius.lg,
-    alignItems: "center",
-    justifyContent: "center",
+    borderColor: '#E4E7F0',
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  otpBoxActive: {
+    borderColor: '#5B21F0',
+    backgroundColor: '#F8F5FF',
   },
   otpInput: {
-    width: "100%",
-    fontSize: 28,
-    fontWeight: "800",
+    width: '100%',
+    color: '#1B1D35',
+    fontSize: 22,
+    fontWeight: '800',
     paddingHorizontal: 0,
     paddingVertical: 0,
   },
-  hint: {
-    fontSize: 13,
-    lineHeight: 19,
+  helperText: {
+    color: '#7C8194',
+    fontSize: 12,
+    lineHeight: 17,
   },
   primaryButton: {
-    marginTop: spacing.md,
-    minHeight: 56,
-    borderRadius: radius.lg,
-    alignItems: "center",
-    justifyContent: "center",
+    minHeight: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 2,
+    backgroundColor: '#5B21F0',
+  },
+  primaryButtonDisabled: {
+    backgroundColor: '#D2D6E3',
+  },
+  primaryButtonPressed: {
+    backgroundColor: '#4B17D6',
   },
   primaryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 17,
-    fontWeight: "800",
-  },
-  secondaryButton: {
-    minHeight: 52,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: "#FED7AA",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  secondaryButtonText: {
+    color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: '800',
   },
   footer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: spacing.xs,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
   },
   footerText: {
+    color: '#7C8194',
     fontSize: 14,
   },
   footerLink: {
+    color: '#5B21F0',
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: '800',
+  },
+  secondaryAction: {
+    alignSelf: 'center',
+    marginTop: -2,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+  },
+  secondaryActionText: {
+    color: '#5B21F0',
+    fontSize: 14,
+    fontWeight: '800',
   },
 });

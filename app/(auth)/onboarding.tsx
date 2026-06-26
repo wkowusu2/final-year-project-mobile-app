@@ -1,158 +1,260 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { radius, spacing } from '@/src/constants/design';
-import { palette } from '@/src/constants/colors';
-import { useAppTheme } from '@/src/hooks/useAppTheme';
+import { onboardingSlides } from '@/src/data/mock-data';
+import { spacing } from '@/src/constants/design';
 
-const slides = [
+const slideMeta = [
   {
-    id: 'welcome',
-    title: 'Welcome to TrafficPulse',
-    description: 'See live traffic conditions, smarter routes, and community reports in one simple place.',
-    accent: '#FBE4D7',
-    card: '#FFFFFF',
-    fruit: '#F28B50',
-    leaf: '#59B685',
-    cup: '#FF8F66',
-    bowl: '#FFE7A3',
+    background: '#EFF2FF',
+    panel: '#DCE2FF',
+    iconBackground: '#5B21F0',
+    button: '#5B21F0',
+    buttonSecondary: null as string | null,
+    illustration: PlanningIllustration,
   },
   {
-    id: 'traffic',
-    title: 'Track congestion and road incidents',
-    description: 'Get real-time updates on accidents, delays, and road activity before you move.',
-    accent: '#F9DCC7',
-    card: '#FFF6EF',
-    fruit: '#F4A261',
-    leaf: '#5AB88F',
-    cup: '#F28C64',
-    bowl: '#FFD87A',
+    background: '#ECFBF7',
+    panel: '#D5FBF2',
+    iconBackground: '#14C7B3',
+    button: '#12C7B2',
+    buttonSecondary: null as string | null,
+    illustration: AnonymousIllustration,
   },
   {
-    id: 'community',
-    title: 'Share reports that help every driver',
-    description: 'Contribute location-aware reports and make each journey safer for the community.',
-    accent: '#FCE7D6',
-    card: '#FFF9F3',
-    fruit: '#F08A5D',
-    leaf: '#58AE87',
-    cup: '#FF9A76',
-    bowl: '#FFE08A',
+    background: '#EEFAF0',
+    panel: '#DAF8DF',
+    iconBackground: '#16D15E',
+    button: '#16D15E',
+    buttonSecondary: null as string | null,
+    illustration: TrafficIllustration,
   },
   {
-    id: 'signin',
-    title: 'Ready to continue?',
-    description: 'Create your account or sign in to unlock live alerts, route intelligence, and tracking.',
-    accent: '#F8DDCF',
-    card: '#FFF7F1',
-    fruit: '#EF8456',
-    leaf: '#4DAE81',
-    cup: '#FF936C',
-    bowl: '#FFD37A',
+    background: '#F4EDFF',
+    panel: '#E7D9FF',
+    iconBackground: '#A855F7',
+    button: '#7C3AED',
+    buttonSecondary: '#14B8A6',
+    illustration: CitiesIllustration,
   },
 ] as const;
 
+const slideIcons = [
+  'office-building',
+  'shield-check-outline',
+  'chart-timeline-variant',
+  'map-marker-star-outline',
+] as const;
+
 export default function OnboardingScreen() {
-  const theme = useAppTheme();
-  const [index, setIndex] = useState(0);
-  const slide = slides[index];
-  const isLast = index === slides.length - 1;
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const scrollRef = useRef<ScrollView>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
-  const colors = useMemo(
-    () => ({
-      background: theme.mode === 'dark' ? '#201B18' : '#F7E6D7',
-      text: theme.mode === 'dark' ? '#FFF7F2' : '#17110D',
-      subtext: theme.mode === 'dark' ? '#D8C0B1' : '#7B6252',
-      primary: '#FF7A45',
-      primaryPressed: '#F26A32',
-      indicatorActive: '#1F1611',
-      indicatorInactive: 'rgba(31, 22, 17, 0.18)',
-      shell: theme.mode === 'dark' ? '#2B221D' : '#F2D9C9',
-    }),
-    [theme.mode],
-  );
+  const activeMeta = slideMeta[activeIndex];
 
-  function next() {
-    if (isLast) {
-      router.replace('/(auth)/login');
+  function goToSlide(nextIndex: number) {
+    scrollRef.current?.scrollTo({ x: nextIndex * width, animated: true });
+    setActiveIndex(nextIndex);
+  }
+
+  function handlePrimaryAction() {
+    if (activeIndex === onboardingSlides.length - 1) {
+      router.replace('/(auth)/signup');
       return;
     }
-    setIndex((value) => value + 1);
+
+    goToSlide(Math.min(activeIndex + 1, onboardingSlides.length - 1));
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View style={[styles.phoneShell, { backgroundColor: colors.shell }]}>
-        <View style={styles.heroWrap}>
-          <View style={[styles.heroCard, { backgroundColor: slide.card }]}>
-            <View style={[styles.heroBlob, { backgroundColor: slide.accent }]} />
-            <View style={[styles.heroShadow, { backgroundColor: 'rgba(0,0,0,0.06)' }]} />
-            <View style={styles.heroArt}>
-              <View style={[styles.bowlBase, { backgroundColor: slide.bowl }]} />
-              <View style={[styles.cupBody, { backgroundColor: slide.cup }]}>
-                <View style={[styles.cupLid, { backgroundColor: '#FFF2E9' }]} />
+    <View style={[styles.screen, { backgroundColor: activeMeta.background }]}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.carousel}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        bounces={false}
+        scrollEventThrottle={16}
+        onMomentumScrollEnd={(event) => {
+          const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+          setActiveIndex(nextIndex);
+        }}>
+        {onboardingSlides.map((slide, index) => {
+          const meta = slideMeta[index];
+          const Illustration = meta.illustration;
+          const isLast = index === onboardingSlides.length - 1;
+
+          return (
+            <View
+              key={slide.id}
+              style={[
+                styles.page,
+                {
+                  width,
+                  paddingTop: insets.top + spacing.sm,
+                  paddingBottom: insets.bottom + spacing.md,
+                  backgroundColor: meta.background,
+                },
+              ]}>
+              <View style={styles.topRow}>
+                <Pressable accessibilityRole="button" onPress={() => router.replace('/(auth)/login')} hitSlop={12}>
+                  <Text style={styles.skipText}>Skip</Text>
+                </Pressable>
               </View>
-              <View style={[styles.fruitLarge, { backgroundColor: slide.fruit }]} />
-              <View style={[styles.fruitSmall, { backgroundColor: '#FFB37B' }]} />
-              <View style={[styles.leafLeft, { backgroundColor: slide.leaf }]} />
-              <View style={[styles.leafRight, { backgroundColor: slide.leaf }]} />
-              <View style={[styles.dotOne, { backgroundColor: '#FFD3B9' }]} />
-              <View style={[styles.dotTwo, { backgroundColor: '#F9C9B2' }]} />
+
+              <View style={styles.heroArea}>
+                <Illustration panelColor={meta.panel} accent={slide.accent} />
+              </View>
+
+              <View style={styles.contentArea}>
+                <View style={[styles.iconTile, { backgroundColor: meta.iconBackground }]}>
+                  <MaterialCommunityIcons color="#FFFFFF" name={slideIcons[index]} size={22} />
+                </View>
+
+                <View style={styles.copyBlock}>
+                  <Text style={styles.title}>{slide.title}</Text>
+                  <Text style={styles.description}>{slide.description}</Text>
+                </View>
+
+                <View style={styles.pagination}>
+                  {onboardingSlides.map((item, itemIndex) => (
+                    <View
+                      key={item.id}
+                      style={[
+                        styles.dot,
+                        {
+                          width: itemIndex === index ? 20 : 8,
+                          backgroundColor: itemIndex === index ? meta.button : 'rgba(148, 163, 184, 0.35)',
+                        },
+                      ]}
+                    />
+                  ))}
+                </View>
+
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={handlePrimaryAction}
+                  style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}>
+                  {meta.buttonSecondary ? (
+                    <View style={styles.gradientButtonFill}>
+                      <View style={[styles.gradientHalf, { backgroundColor: meta.button, flex: 0.54 }]} />
+                      <View style={[styles.gradientHalf, { backgroundColor: meta.buttonSecondary, flex: 0.46 }]} />
+                    </View>
+                  ) : (
+                    <View style={[styles.solidButtonFill, { backgroundColor: meta.button }]} />
+                  )}
+                  <View style={styles.primaryButtonContent}>
+                    <Text style={styles.primaryButtonText}>{isLast ? 'Get Started' : 'Next'}</Text>
+                    <MaterialCommunityIcons color="#FFFFFF" name="chevron-right" size={20} />
+                  </View>
+                </Pressable>
+              </View>
             </View>
-          </View>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+function PlanningIllustration({ panelColor, accent }: { panelColor: string; accent: string }) {
+  return (
+    <View style={styles.illustrationWrap}>
+      <View style={[styles.sun, { backgroundColor: '#F5F56B' }]} />
+      <View style={[styles.sunRay, { backgroundColor: accent }]} />
+      <View style={[styles.cityBase, { backgroundColor: panelColor }]} />
+      <View style={[styles.cityShadow, { backgroundColor: 'rgba(90, 90, 255, 0.12)' }]} />
+      <View style={[styles.cityShadowTwo, { backgroundColor: 'rgba(90, 90, 255, 0.12)' }]} />
+
+      <View style={[styles.signalPole, { backgroundColor: accent }]} />
+      <View style={[styles.signalHead, { borderColor: accent }]} />
+
+      <View style={[styles.buildingSmall, { backgroundColor: '#8EA8FF' }]} />
+      <View style={[styles.buildingSmallWindows, { backgroundColor: '#5B21F0' }]} />
+
+      <View style={[styles.buildingLarge, { backgroundColor: '#6B7CFF' }]} />
+      <View style={[styles.buildingLargeWindows, { backgroundColor: '#4C1D95' }]} />
+
+      <View style={[styles.roadStrip, { backgroundColor: '#B39DFF' }]} />
+      <View style={[styles.roadStripSoft, { backgroundColor: 'rgba(181, 152, 255, 0.45)' }]} />
+    </View>
+  );
+}
+
+function AnonymousIllustration({ panelColor, accent }: { panelColor: string; accent: string }) {
+  return (
+    <View style={styles.illustrationWrap}>
+      <View style={[styles.ringOuter, { backgroundColor: panelColor }]} />
+      <View style={[styles.ringInner, { backgroundColor: 'rgba(20, 199, 179, 0.12)' }]} />
+      <View style={[styles.shieldBody, { backgroundColor: accent }]} />
+      <MaterialCommunityIcons color="#FFFFFF" name="check" size={28} style={styles.shieldCheck} />
+
+      <View style={[styles.node, styles.nodeTopLeft, { backgroundColor: '#B9F7E8' }]} />
+      <View style={[styles.node, styles.nodeTopRight, { backgroundColor: '#B9F7E8' }]} />
+      <View style={[styles.node, styles.nodeBottomLeft, { backgroundColor: '#B9F7E8' }]} />
+      <View style={[styles.node, styles.nodeBottomRight, { backgroundColor: '#B9F7E8' }]} />
+
+      <View style={[styles.link, styles.linkTopLeft, { borderColor: accent }]} />
+      <View style={[styles.link, styles.linkTopRight, { borderColor: accent }]} />
+      <View style={[styles.link, styles.linkBottomLeft, { borderColor: accent }]} />
+      <View style={[styles.link, styles.linkBottomRight, { borderColor: accent }]} />
+    </View>
+  );
+}
+
+function TrafficIllustration({ panelColor, accent }: { panelColor: string; accent: string }) {
+  return (
+    <View style={styles.illustrationWrap}>
+      <View style={[styles.chartCard, { backgroundColor: panelColor }]} />
+      <View style={styles.legendRow}>
+        <View style={[styles.legendPill, { backgroundColor: '#16D15E' }]}>
+          <Text style={styles.legendText}>FREE</Text>
         </View>
-
-        <View style={styles.content}>
-          <Text style={[styles.title, { color: colors.text }]}>{slide.title}</Text>
-          <Text style={[styles.description, { color: colors.subtext }]}>{slide.description}</Text>
-
-          <View style={styles.pagination}>
-            {slides.map((item, itemIndex) => (
-              <View
-                key={item.id}
-                style={[
-                  styles.dot,
-                  {
-                    backgroundColor: itemIndex === index ? colors.indicatorActive : colors.indicatorInactive,
-                    width: itemIndex === index ? 28 : 10,
-                  },
-                ]}
-              />
-            ))}
-          </View>
+        <View style={[styles.legendPill, { backgroundColor: '#F59E0B' }]}>
+          <Text style={styles.legendText}>SLOW</Text>
         </View>
-
-        <View style={styles.actions}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={next}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              { backgroundColor: pressed ? colors.primaryPressed : colors.primary },
-            ]}>
-            <Text style={styles.primaryButtonText}>{isLast ? 'Sign In' : 'Next'}</Text>
-          </Pressable>
-
-          <View style={styles.footerRow}>
-            {isLast ? (
-              <>
-                <Text style={[styles.footerText, { color: colors.subtext }]}>New to TrafficPulse? </Text>
-                <Pressable onPress={() => router.replace('/(auth)/signup')}>
-                  <Text style={[styles.footerLink, { color: colors.text }]}>Create account</Text>
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <Text style={[styles.footerText, { color: colors.subtext }]}>Already have an account? </Text>
-                <Pressable onPress={() => router.replace('/(auth)/login')}>
-                  <Text style={[styles.footerLink, { color: colors.text }]}>Sign in</Text>
-                </Pressable>
-              </>
-            )}
-          </View>
+        <View style={[styles.legendPill, { backgroundColor: '#F43F5E' }]}>
+          <Text style={styles.legendText}>JAM</Text>
         </View>
       </View>
+      <View style={[styles.chartBand, { backgroundColor: 'rgba(34, 197, 94, 0.08)' }]} />
+      <View style={[styles.chartBandMiddle, { backgroundColor: 'rgba(250, 204, 21, 0.32)' }]} />
+      <View style={[styles.chartBandRight, { backgroundColor: 'rgba(34, 197, 94, 0.12)' }]} />
+
+      <View style={[styles.chartLine, { borderColor: accent }]} />
+      <View style={[styles.chartLineSecond, { borderColor: accent }]} />
+
+      <View style={[styles.chartDot, styles.chartDotStart, { backgroundColor: '#16D15E' }]} />
+      <View style={[styles.chartDot, styles.chartDotMid, { backgroundColor: '#F59E0B' }]} />
+      <View style={[styles.chartDot, styles.chartDotMidTwo, { backgroundColor: '#16D15E' }]} />
+      <View style={[styles.chartDot, styles.chartDotEnd, { backgroundColor: '#16D15E' }]} />
+    </View>
+  );
+}
+
+function CitiesIllustration({ panelColor, accent }: { panelColor: string; accent: string }) {
+  return (
+    <View style={styles.illustrationWrap}>
+      <View style={[styles.ringOuter, { backgroundColor: panelColor }]} />
+      <View style={[styles.ringInner, { backgroundColor: 'rgba(168, 85, 247, 0.10)' }]} />
+      <View style={[styles.ringCenter, { backgroundColor: accent }]} />
+      <MaterialCommunityIcons color="#FFFFFF" name="star" size={18} style={styles.ringStar} />
+
+      <View style={[styles.networkNode, styles.networkTopLeft, { backgroundColor: '#D7B4FF' }]} />
+      <View style={[styles.networkNode, styles.networkTopRight, { backgroundColor: '#D7B4FF' }]} />
+      <View style={[styles.networkNode, styles.networkBottomLeft, { backgroundColor: '#D7B4FF' }]} />
+      <View style={[styles.networkNode, styles.networkBottomRight, { backgroundColor: '#D7B4FF' }]} />
+
+      <View style={[styles.networkLink, styles.networkLinkTopLeft, { borderColor: accent }]} />
+      <View style={[styles.networkLink, styles.networkLinkTopRight, { borderColor: accent }]} />
+      <View style={[styles.networkLink, styles.networkLinkBottomLeft, { borderColor: accent }]} />
+      <View style={[styles.networkLink, styles.networkLinkBottomRight, { borderColor: accent }]} />
     </View>
   );
 }
@@ -160,174 +262,432 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 28,
-    justifyContent: 'center',
   },
-  phoneShell: {
+  carousel: {
     flex: 1,
-    borderRadius: 36,
-    paddingHorizontal: 22,
-    paddingTop: 18,
-    paddingBottom: 28,
+  },
+  page: {
+    flex: 1,
+    paddingHorizontal: 20,
     justifyContent: 'space-between',
   },
-  heroWrap: {
-    alignItems: 'center',
-    paddingTop: 10,
+  topRow: {
+    alignItems: 'flex-end',
+    paddingTop: 2,
   },
-  heroCard: {
-    width: '100%',
-    height: 360,
-    borderRadius: 34,
-    overflow: 'hidden',
+  skipText: {
+    color: '#A3A6B7',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  heroArea: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.lg,
+  },
+  illustrationWrap: {
+    width: 240,
+    height: 220,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroBlob: {
+  sun: {
     position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    top: 18,
+    left: 40,
+    top: 54,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
   },
-  heroShadow: {
+  sunRay: {
     position: 'absolute',
-    bottom: 58,
-    width: 190,
-    height: 28,
-    borderRadius: radius.round,
+    left: 46,
+    top: 70,
+    width: 28,
+    height: 2,
+    borderRadius: 99,
+    opacity: 0.9,
   },
-  heroArt: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bowlBase: {
+  cityBase: {
     position: 'absolute',
-    bottom: 84,
-    width: 200,
-    height: 72,
-    borderRadius: 30,
+    bottom: 48,
+    width: 180,
+    height: 92,
+    borderRadius: 14,
+    opacity: 0.48,
   },
-  cupBody: {
+  cityShadow: {
     position: 'absolute',
-    right: 78,
-    bottom: 120,
+    bottom: 30,
+    left: 18,
+    width: 72,
+    height: 96,
+    borderRadius: 12,
+    opacity: 0.54,
+  },
+  cityShadowTwo: {
+    position: 'absolute',
+    bottom: 30,
+    right: 16,
     width: 70,
-    height: 104,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
+    height: 96,
+    borderRadius: 12,
+    opacity: 0.5,
   },
-  cupLid: {
-    marginTop: 14,
-    width: 54,
-    height: 18,
-    borderRadius: 10,
-  },
-  fruitLarge: {
+  signalPole: {
     position: 'absolute',
-    left: 86,
-    bottom: 132,
-    width: 108,
-    height: 108,
-    borderRadius: 54,
+    top: 76,
+    width: 3,
+    height: 34,
+    borderRadius: 99,
   },
-  fruitSmall: {
+  signalHead: {
     position: 'absolute',
-    left: 154,
-    bottom: 120,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-  },
-  leafLeft: {
-    position: 'absolute',
-    left: 100,
-    bottom: 206,
-    width: 44,
-    height: 22,
-    borderRadius: 18,
-    transform: [{ rotate: '-30deg' }],
-  },
-  leafRight: {
-    position: 'absolute',
-    left: 142,
-    bottom: 206,
-    width: 44,
-    height: 22,
-    borderRadius: 18,
-    transform: [{ rotate: '28deg' }],
-  },
-  dotOne: {
-    position: 'absolute',
-    left: 52,
-    top: 116,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-  },
-  dotTwo: {
-    position: 'absolute',
-    right: 58,
-    top: 94,
+    top: 62,
     width: 12,
     height: 12,
     borderRadius: 6,
+    borderWidth: 3,
+    backgroundColor: 'transparent',
   },
-  content: {
+  buildingSmall: {
+    position: 'absolute',
+    left: 42,
+    bottom: 42,
+    width: 66,
+    height: 84,
+    borderRadius: 4,
+    opacity: 0.96,
+  },
+  buildingSmallWindows: {
+    position: 'absolute',
+    left: 55,
+    bottom: 92,
+    width: 39,
+    height: 20,
+    borderRadius: 2,
+    opacity: 1,
+  },
+  buildingLarge: {
+    position: 'absolute',
+    right: 40,
+    bottom: 40,
+    width: 70,
+    height: 96,
+    borderRadius: 4,
+    opacity: 0.96,
+  },
+  buildingLargeWindows: {
+    position: 'absolute',
+    right: 53,
+    bottom: 98,
+    width: 44,
+    height: 42,
+    borderRadius: 2,
+  },
+  roadStrip: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 34,
+    height: 18,
+    borderRadius: 3,
+    opacity: 0.7,
+  },
+  roadStripSoft: {
+    position: 'absolute',
+    left: 8,
+    right: 8,
+    bottom: 26,
+    height: 12,
+    borderRadius: 3,
+  },
+  ringOuter: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    opacity: 0.95,
+  },
+  ringInner: {
+    position: 'absolute',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+  },
+  shieldBody: {
+    position: 'absolute',
+    width: 52,
+    height: 72,
+    borderRadius: 18,
+    top: 58,
+  },
+  shieldCheck: {
+    position: 'absolute',
+    top: 76,
+  },
+  node: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  nodeTopLeft: {
+    left: 44,
+    top: 42,
+  },
+  nodeTopRight: {
+    right: 42,
+    top: 42,
+  },
+  nodeBottomLeft: {
+    left: 44,
+    bottom: 38,
+  },
+  nodeBottomRight: {
+    right: 42,
+    bottom: 38,
+  },
+  link: {
+    position: 'absolute',
+    width: 76,
+    borderTopWidth: 2,
+    borderStyle: 'dashed',
+  },
+  linkTopLeft: {
+    left: 66,
+    top: 62,
+    transform: [{ rotate: '35deg' }],
+  },
+  linkTopRight: {
+    right: 66,
+    top: 62,
+    transform: [{ rotate: '-35deg' }],
+  },
+  linkBottomLeft: {
+    left: 66,
+    bottom: 56,
+    transform: [{ rotate: '-35deg' }],
+  },
+  linkBottomRight: {
+    right: 66,
+    bottom: 56,
+    transform: [{ rotate: '35deg' }],
+  },
+  chartCard: {
+    position: 'absolute',
+    width: 182,
+    height: 128,
+    borderRadius: 16,
+    opacity: 0.92,
+  },
+  legendRow: {
+    position: 'absolute',
+    left: 24,
+    top: 34,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  legendPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  legendText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  chartBand: {
+    position: 'absolute',
+    left: 34,
+    bottom: 66,
+    width: 42,
+    height: 30,
+    borderRadius: 2,
+  },
+  chartBandMiddle: {
+    position: 'absolute',
+    left: 74,
+    bottom: 48,
+    width: 40,
+    height: 46,
+    borderRadius: 2,
+  },
+  chartBandRight: {
+    position: 'absolute',
+    left: 116,
+    bottom: 58,
+    width: 44,
+    height: 36,
+    borderRadius: 2,
+  },
+  chartLine: {
+    position: 'absolute',
+    left: 32,
+    bottom: 60,
+    width: 44,
+    height: 44,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderRadius: 2,
+    transform: [{ rotate: '-22deg' }],
+  },
+  chartLineSecond: {
+    position: 'absolute',
+    left: 74,
+    bottom: 52,
+    width: 76,
+    height: 48,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderRadius: 2,
+    transform: [{ rotate: '12deg' }],
+  },
+  chartDot: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  chartDotStart: {
+    left: 30,
+    bottom: 58,
+  },
+  chartDotMid: {
+    left: 79,
+    bottom: 90,
+  },
+  chartDotMidTwo: {
+    left: 116,
+    bottom: 62,
+  },
+  chartDotEnd: {
+    right: 26,
+    bottom: 42,
+  },
+  ringCenter: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  ringStar: {
+    position: 'absolute',
+  },
+  networkNode: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  networkTopLeft: {
+    left: 42,
+    top: 56,
+  },
+  networkTopRight: {
+    right: 38,
+    top: 52,
+  },
+  networkBottomLeft: {
+    left: 38,
+    bottom: 54,
+  },
+  networkBottomRight: {
+    right: 44,
+    bottom: 44,
+  },
+  networkLink: {
+    position: 'absolute',
+    width: 78,
+    borderTopWidth: 2,
+    borderStyle: 'dashed',
+  },
+  networkLinkTopLeft: {
+    left: 62,
+    top: 72,
+    transform: [{ rotate: '34deg' }],
+  },
+  networkLinkTopRight: {
+    right: 62,
+    top: 68,
+    transform: [{ rotate: '-32deg' }],
+  },
+  networkLinkBottomLeft: {
+    left: 62,
+    bottom: 64,
+    transform: [{ rotate: '-34deg' }],
+  },
+  networkLinkBottomRight: {
+    right: 62,
+    bottom: 52,
+    transform: [{ rotate: '34deg' }],
+  },
+  contentArea: {
     gap: spacing.md,
-    paddingHorizontal: 6,
+    paddingBottom: spacing.sm,
+  },
+  iconTile: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  copyBlock: {
+    gap: spacing.sm,
   },
   title: {
-    fontSize: 34,
-    lineHeight: 40,
+    color: '#1B1D35',
+    fontSize: 26,
+    lineHeight: 31,
     fontWeight: '900',
-    textAlign: 'center',
+    letterSpacing: -0.4,
   },
   description: {
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: 'center',
-    paddingHorizontal: 8,
+    color: '#76809C',
+    fontSize: 14,
+    lineHeight: 21,
   },
   pagination: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 10,
-    marginTop: 8,
+    gap: 6,
+    alignItems: 'center',
   },
   dot: {
-    height: 10,
-    borderRadius: radius.round,
-  },
-  actions: {
-    gap: 18,
-    paddingHorizontal: 6,
+    height: 8,
+    borderRadius: 999,
   },
   primaryButton: {
-    minHeight: 60,
+    height: 46,
     borderRadius: 18,
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  primaryButtonPressed: {
+    opacity: 0.93,
+    transform: [{ scale: 0.995 }],
+  },
+  gradientButtonFill: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
+  },
+  gradientHalf: {
+    height: '100%',
+  },
+  solidButtonFill: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  primaryButtonContent: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
   },
   primaryButtonText: {
-    color: palette.white,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 15,
-  },
-  footerLink: {
-    fontSize: 15,
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '800',
   },
 });
