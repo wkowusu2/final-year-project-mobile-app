@@ -88,7 +88,6 @@ export default function OnboardingScreen() {
         {onboardingSlides.map((slide, index) => {
           const meta = slideMeta[index];
           const Illustration = meta.illustration;
-          const isLast = index === onboardingSlides.length - 1;
 
           return (
             <View
@@ -121,44 +120,46 @@ export default function OnboardingScreen() {
                   <Text style={styles.title}>{slide.title}</Text>
                   <Text style={styles.description}>{slide.description}</Text>
                 </View>
-
-                <View style={styles.pagination}>
-                  {onboardingSlides.map((item, itemIndex) => (
-                    <View
-                      key={item.id}
-                      style={[
-                        styles.dot,
-                        {
-                          width: itemIndex === index ? 20 : 8,
-                          backgroundColor: itemIndex === index ? meta.button : 'rgba(148, 163, 184, 0.35)',
-                        },
-                      ]}
-                    />
-                  ))}
-                </View>
-
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={handlePrimaryAction}
-                  style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}>
-                  {meta.buttonSecondary ? (
-                    <View style={styles.gradientButtonFill}>
-                      <View style={[styles.gradientHalf, { backgroundColor: meta.button, flex: 0.54 }]} />
-                      <View style={[styles.gradientHalf, { backgroundColor: meta.buttonSecondary, flex: 0.46 }]} />
-                    </View>
-                  ) : (
-                    <View style={[styles.solidButtonFill, { backgroundColor: meta.button }]} />
-                  )}
-                  <View style={styles.primaryButtonContent}>
-                    <Text style={styles.primaryButtonText}>{isLast ? 'Get Started' : 'Next'}</Text>
-                    <MaterialCommunityIcons color="#FFFFFF" name="chevron-right" size={20} />
-                  </View>
-                </Pressable>
               </View>
             </View>
           );
         })}
       </ScrollView>
+
+      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+        <View style={styles.pagination}>
+          {onboardingSlides.map((item, itemIndex) => (
+            <View
+              key={item.id}
+              style={[
+                styles.dot,
+                {
+                  width: itemIndex === activeIndex ? 20 : 8,
+                  backgroundColor: itemIndex === activeIndex ? activeMeta.button : 'rgba(148, 163, 184, 0.35)',
+                },
+              ]}
+            />
+          ))}
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={handlePrimaryAction}
+          style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}>
+          {activeMeta.buttonSecondary ? (
+            <View style={styles.gradientButtonFill}>
+              <View style={[styles.gradientHalf, { backgroundColor: activeMeta.button, flex: 0.54 }]} />
+              <View style={[styles.gradientHalf, { backgroundColor: activeMeta.buttonSecondary, flex: 0.46 }]} />
+            </View>
+          ) : (
+            <View style={[styles.solidButtonFill, { backgroundColor: activeMeta.button }]} />
+          )}
+          <View style={styles.primaryButtonContent}>
+            <Text style={styles.primaryButtonText}>{activeIndex === onboardingSlides.length - 1 ? 'Get Started' : 'Next'}</Text>
+            <MaterialCommunityIcons color="#FFFFFF" name="chevron-right" size={20} />
+          </View>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -262,6 +263,10 @@ function CitiesIllustration({ panelColor, accent }: { panelColor: string; accent
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  footer: {
+    paddingHorizontal: 20,
+    gap: spacing.md,
   },
   carousel: {
     flex: 1,
