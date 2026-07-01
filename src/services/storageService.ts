@@ -11,6 +11,9 @@ const KEYS = {
   summary: 'roadpulse.lastSummary',
   accessToken: 'roadpulse.accessToken',
   refreshToken: 'roadpulse.refreshToken',
+  userId: 'roadpulse.userId',
+  hasProfile: 'roadpulse.hasProfile',
+  fullName: 'roadpulse.fullName',
   doneOnBoarding: 'roadpulse.doneOnBoarding',
 };
 
@@ -42,6 +45,34 @@ export const storageService = {
   async clearTokens() {
     await SecureStore.deleteItemAsync(KEYS.accessToken);
     await SecureStore.deleteItemAsync(KEYS.refreshToken);
+  },
+  saveUserId(value: string) {
+    return AsyncStorage.setItem(KEYS.userId, value);
+  },
+  getUserId() {
+    return AsyncStorage.getItem(KEYS.userId);
+  },
+  clearUserId() {
+    return AsyncStorage.removeItem(KEYS.userId);
+  },
+  saveHasProfile(value: boolean) {
+    return AsyncStorage.setItem(KEYS.hasProfile, JSON.stringify(value));
+  },
+  async getHasProfile() {
+    const raw = await AsyncStorage.getItem(KEYS.hasProfile);
+    return raw ? (JSON.parse(raw) as boolean) : null;
+  },
+  clearHasProfile() {
+    return AsyncStorage.removeItem(KEYS.hasProfile);
+  },
+  saveFullName(value: string) {
+    return AsyncStorage.setItem(KEYS.fullName, value);
+  },
+  getFullName() {
+    return AsyncStorage.getItem(KEYS.fullName);
+  },
+  clearFullName() {
+    return AsyncStorage.removeItem(KEYS.fullName);
   },
   saveDoneOnBoarding(value: boolean) {
     return AsyncStorage.setItem(KEYS.doneOnBoarding, JSON.stringify(value));
@@ -80,7 +111,16 @@ export const storageService = {
     return readJson<TrackingSummary | null>(KEYS.summary, null);
   },
   async logout() {
-    await AsyncStorage.multiRemove([KEYS.driver, KEYS.pendingPoints, KEYS.lastSyncAt, KEYS.summary, KEYS.doneOnBoarding]);
+    await AsyncStorage.multiRemove([
+      KEYS.driver,
+      KEYS.pendingPoints,
+      KEYS.lastSyncAt,
+      KEYS.summary,
+      KEYS.userId,
+      KEYS.hasProfile,
+      KEYS.fullName,
+      KEYS.doneOnBoarding,
+    ]);
     await this.clearTokens();
   },
 };

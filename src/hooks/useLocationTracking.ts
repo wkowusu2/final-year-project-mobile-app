@@ -47,7 +47,7 @@ export function useLocationTracking(driver: DriverProfile | null, isOnline: bool
       }
 
       const startedAt = new Date().toISOString();
-      const response = await api.startSession(driver.driverId, driver.token, startedAt);
+      const response = await api.startSession(driver.driverId, startedAt);
       const activeSession = { sessionId: response.sessionId, startedAt };
       setSession(activeSession);
       setPointsCollected(0);
@@ -93,7 +93,7 @@ export function useLocationTracking(driver: DriverProfile | null, isOnline: bool
 
     try {
       syncedOnStop = await flushBuffer();
-      await api.stopSession(session.sessionId, driver.token, endedAt);
+      await api.stopSession(session.sessionId, endedAt);
     } finally {
       const pending = await storageService.getPendingPoints();
       const summary: TrackingSummary = {

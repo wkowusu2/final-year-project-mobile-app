@@ -78,16 +78,7 @@ export default function OnboardingScreen() {
     setIsSubmitting(true);
 
     try {
-      const token = await storageService.getAccessToken();
-
-      if (!token) {
-        Alert.alert('Session expired', 'Please verify your phone number again.', [
-          { text: 'OK', onPress: () => router.replace('/(auth)/login') },
-        ]);
-        return;
-      }
-
-      const response = await api.completeOnboarding(token);
+      const response = await api.completeOnboarding();
 
       if (!response.success || !response.data) {
         Alert.alert('Unable to complete onboarding', response.error ?? 'Something went wrong.', [

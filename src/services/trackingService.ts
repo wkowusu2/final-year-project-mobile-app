@@ -21,7 +21,7 @@ export async function syncPendingPoints(driver: DriverProfile, online: boolean) 
       continue;
     }
 
-    await api.sendGpsBatch(driver.driverId, sessionId, driver.token, batch);
+    await api.sendGpsBatch(driver.driverId, sessionId, batch);
     const ids = batch.map((point) => point.id);
     remaining = remaining.filter((point) => !ids.includes(point.id));
     await storageService.savePendingPoints(remaining);
@@ -39,7 +39,7 @@ export async function storeOrSyncBatch(driver: DriverProfile, online: boolean, p
   }
 
   try {
-    await api.sendGpsBatch(driver.driverId, points[0].sessionId, driver.token, points);
+    await api.sendGpsBatch(driver.driverId, points[0].sessionId, points);
     await storageService.saveLastSyncAt(new Date().toISOString());
     return { synced: points.length };
   } catch {

@@ -29,6 +29,7 @@ export type VerifyOtpData = {
   refreshToke: string;
   fullName: string | null;
   doneOnBoarding: boolean;
+  userId: string;
 };
 
 export type VerifyOtpResponse = {
@@ -56,6 +57,15 @@ export type DoneOnboardingResponse = {
   data: {
     doneOnboarding: boolean;
   } | null;
+};
+
+export type RefreshTokensResponse = {
+  success: boolean;
+  data: {
+    access_token: string;
+    refresh_token: string;
+  } | null;
+  error: string | null;
 };
 
 export type AuthTokens = {

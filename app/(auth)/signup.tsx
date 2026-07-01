@@ -54,22 +54,12 @@ export default function SignUpScreen() {
     setIsSubmitting(true);
 
     try {
-      const token = await storageService.getAccessToken();
-
-      if (!token) {
-        Alert.alert('Session expired', 'Please verify your phone number again.', [
-          { text: 'OK', onPress: () => router.replace('/(auth)/login') },
-        ]);
-        return;
-      }
-
       const response = await api.registerDriver(
         {
           phone,
           fullName: fullName.trim(),
           ...(email.trim() ? { email: email.trim() } : {}),
         },
-        token,
       );
 
       if (!response.success || !response.data) {
@@ -80,7 +70,9 @@ export default function SignUpScreen() {
         return;
       }
 
+      await storageService.saveHasProfile(true);
       await storageService.saveDoneOnBoarding(response.data.doneOnBoarding);
+      await storageService.saveFullName(response.data.fullName);
 
       if (!response.data.doneOnBoarding) {
         router.replace('/(auth)/onboarding');
