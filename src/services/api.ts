@@ -1,5 +1,5 @@
 import { API_BASE_URL } from '@/src/constants/api';
-import { DriverRegistrationInput, RegisterDriverResponse, SendOtpResponse, VerifyOtpPayload, VerifyOtpResponse } from '@/src/types/driver';
+import { DoneOnboardingResponse, DriverRegistrationInput, RegisterDriverResponse, SendOtpResponse, VerifyOtpPayload, VerifyOtpResponse } from '@/src/types/driver';
 import { GpsPoint } from '@/src/types/tracking';
 
 type StartResponse = { success: true; sessionId: string };
@@ -47,6 +47,12 @@ export const api = {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(input),
+    });
+  },
+  completeOnboarding(token: string) {
+    return request<DoneOnboardingResponse>('/driver-profiles/done-onboarding', {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
   startSession(driverId: string, token: string, startedAt: string) {

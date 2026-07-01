@@ -1,11 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { onboardingSlides } from '@/src/data/mock-data';
 import { spacing } from '@/src/constants/design';
+import { api } from '@/src/services/api';
+import { storageService } from '@/src/services/storageService';
 
 const slideMeta = [
   {
@@ -54,6 +56,7 @@ export default function OnboardingScreen() {
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeMeta = slideMeta[activeIndex];
 
@@ -62,13 +65,48 @@ export default function OnboardingScreen() {
     setActiveIndex(nextIndex);
   }
 
-  function handlePrimaryAction() {
-    if (activeIndex === onboardingSlides.length - 1) {
-      router.replace('/(auth)/permissions');
+  async function handlePrimaryAction() {
+    if (activeIndex !== onboardingSlides.length - 1) {
+      goToSlide(Math.min(activeIndex + 1, onboardingSlides.length - 1));
       return;
     }
 
-    goToSlide(Math.min(activeIndex + 1, onboardingSlides.length - 1));
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const token = await storageService.getAccessToken();
+
+      if (!token) {
+        Alert.alert('Session expired', 'Please verify your phone number again.', [
+          { text: 'OK', onPress: () => router.replace('/(auth)/login') },
+        ]);
+        return;
+      }
+
+      const response = await api.completeOnboarding(token);
+
+      if (!response.success || !response.data) {
+        Alert.alert('Unable to complete onboarding', response.error ?? 'Something went wrong.', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Retry', onPress: () => void handlePrimaryAction() },
+        ]);
+        return;
+      }
+
+      await storageService.saveDoneOnBoarding(response.data.doneOnboarding);
+      router.replace('/(auth)/permissions');
+    } catch (error) {
+      Alert.alert('Unable to complete onboarding', error instanceof Error ? error.message : 'Something went wrong.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Retry', onPress: () => void handlePrimaryAction() },
+      ]);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -144,8 +182,9 @@ export default function OnboardingScreen() {
 
         <Pressable
           accessibilityRole="button"
-          onPress={handlePrimaryAction}
-          style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}>
+          disabled={isSubmitting}
+          onPress={() => void handlePrimaryAction()}
+          style={({ pressed }) => [styles.primaryButton, pressed && !isSubmitting && styles.primaryButtonPressed]}>
           {activeMeta.buttonSecondary ? (
             <View style={styles.gradientButtonFill}>
               <View style={[styles.gradientHalf, { backgroundColor: activeMeta.button, flex: 0.54 }]} />
@@ -155,7 +194,9 @@ export default function OnboardingScreen() {
             <View style={[styles.solidButtonFill, { backgroundColor: activeMeta.button }]} />
           )}
           <View style={styles.primaryButtonContent}>
-            <Text style={styles.primaryButtonText}>{activeIndex === onboardingSlides.length - 1 ? 'Get Started' : 'Next'}</Text>
+            <Text style={styles.primaryButtonText}>
+              {activeIndex === onboardingSlides.length - 1 ? (isSubmitting ? 'Saving...' : 'Get Started') : 'Next'}
+            </Text>
             <MaterialCommunityIcons color="#FFFFFF" name="chevron-right" size={20} />
           </View>
         </Pressable>

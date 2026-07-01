@@ -50,6 +50,14 @@ export type RegisterDriverResponse = {
   error: string | null;
 };
 
+export type DoneOnboardingResponse = {
+  success: boolean;
+  error: string | null;
+  data: {
+    doneOnboarding: boolean;
+  } | null;
+};
+
 export type AuthTokens = {
   accessToken: string;
   refreshToken: string;

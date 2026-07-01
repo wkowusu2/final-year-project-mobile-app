@@ -80,6 +80,8 @@ export default function SignUpScreen() {
         return;
       }
 
+      await storageService.saveDoneOnBoarding(response.data.doneOnBoarding);
+
       if (!response.data.doneOnBoarding) {
         router.replace('/(auth)/onboarding');
         return;

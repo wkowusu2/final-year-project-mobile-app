@@ -11,6 +11,7 @@ const KEYS = {
   summary: 'roadpulse.lastSummary',
   accessToken: 'roadpulse.accessToken',
   refreshToken: 'roadpulse.refreshToken',
+  doneOnBoarding: 'roadpulse.doneOnBoarding',
 };
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -42,6 +43,16 @@ export const storageService = {
     await SecureStore.deleteItemAsync(KEYS.accessToken);
     await SecureStore.deleteItemAsync(KEYS.refreshToken);
   },
+  saveDoneOnBoarding(value: boolean) {
+    return AsyncStorage.setItem(KEYS.doneOnBoarding, JSON.stringify(value));
+  },
+  async getDoneOnBoarding() {
+    const raw = await AsyncStorage.getItem(KEYS.doneOnBoarding);
+    return raw ? (JSON.parse(raw) as boolean) : null;
+  },
+  clearDoneOnBoarding() {
+    return AsyncStorage.removeItem(KEYS.doneOnBoarding);
+  },
   getPendingPoints() {
     return readJson<GpsPoint[]>(KEYS.pendingPoints, []);
   },
@@ -69,7 +80,7 @@ export const storageService = {
     return readJson<TrackingSummary | null>(KEYS.summary, null);
   },
   async logout() {
-    await AsyncStorage.multiRemove([KEYS.driver, KEYS.pendingPoints, KEYS.lastSyncAt, KEYS.summary]);
+    await AsyncStorage.multiRemove([KEYS.driver, KEYS.pendingPoints, KEYS.lastSyncAt, KEYS.summary, KEYS.doneOnBoarding]);
     await this.clearTokens();
   },
 };

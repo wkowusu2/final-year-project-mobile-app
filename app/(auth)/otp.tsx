@@ -96,6 +96,7 @@ export default function OtpScreen() {
         accessToken: response.data.accessToken,
         refreshToken: response.data.refreshToke,
       });
+      await storageService.saveDoneOnBoarding(response.data.doneOnBoarding);
 
       if (!response.data.hasProfile) {
         router.replace({ pathname: '/(auth)/signup', params: { phone } });
