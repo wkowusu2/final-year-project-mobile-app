@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
-import { DriverProfile } from '@/src/types/driver';
+import { AuthTokens, DriverProfile } from '@/src/types/driver';
 import { GpsPoint, TrackingSummary } from '@/src/types/tracking';
 
 const KEYS = {
@@ -8,6 +9,8 @@ const KEYS = {
   pendingPoints: 'roadpulse.pendingGpsPoints',
   lastSyncAt: 'roadpulse.lastSyncAt',
   summary: 'roadpulse.lastSummary',
+  accessToken: 'roadpulse.accessToken',
+  refreshToken: 'roadpulse.refreshToken',
 };
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -24,6 +27,20 @@ export const storageService = {
   },
   clearDriver() {
     return AsyncStorage.removeItem(KEYS.driver);
+  },
+  async saveAuthTokens(tokens: AuthTokens) {
+    await SecureStore.setItemAsync(KEYS.accessToken, tokens.accessToken);
+    await SecureStore.setItemAsync(KEYS.refreshToken, tokens.refreshToken);
+  },
+  getAccessToken() {
+    return SecureStore.getItemAsync(KEYS.accessToken);
+  },
+  getRefreshToken() {
+    return SecureStore.getItemAsync(KEYS.refreshToken);
+  },
+  async clearTokens() {
+    await SecureStore.deleteItemAsync(KEYS.accessToken);
+    await SecureStore.deleteItemAsync(KEYS.refreshToken);
   },
   getPendingPoints() {
     return readJson<GpsPoint[]>(KEYS.pendingPoints, []);
@@ -53,5 +70,6 @@ export const storageService = {
   },
   async logout() {
     await AsyncStorage.multiRemove([KEYS.driver, KEYS.pendingPoints, KEYS.lastSyncAt, KEYS.summary]);
+    await this.clearTokens();
   },
 };

@@ -1,8 +1,10 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { api } from '@/src/services/api';
+import { storageService } from '@/src/services/storageService';
 
 function normalizePhone(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 10);
@@ -18,11 +20,14 @@ function formatGhanaPhone(value: string) {
 }
 
 export default function SignUpScreen() {
+  const params = useLocalSearchParams<{ phone?: string }>();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(typeof params.phone === 'string' ? params.phone : '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isValid = fullName.trim().length > 1 && email.includes('@') && phone.length === 10 && phone.startsWith('0');
+  const hasValidEmail = email.length === 0 || email.includes('@');
+  const isValid = fullName.trim().length > 1 && hasValidEmail && phone.length === 10 && phone.startsWith('0');
   const colors = {
     background: '#FFFFFF',
     heroText: '#1B1D35',
@@ -41,12 +46,54 @@ export default function SignUpScreen() {
     iconB: '#14B8A6',
   };
 
-  function continueToOtp() {
-    if (!isValid) {
+  async function continueToOtp() {
+    if (!isValid || isSubmitting) {
       return;
     }
 
-    router.push({ pathname: '/(auth)/otp', params: { phone, mode: 'signup' } });
+    setIsSubmitting(true);
+
+    try {
+      const token = await storageService.getAccessToken();
+
+      if (!token) {
+        Alert.alert('Session expired', 'Please verify your phone number again.', [
+          { text: 'OK', onPress: () => router.replace('/(auth)/login') },
+        ]);
+        return;
+      }
+
+      const response = await api.registerDriver(
+        {
+          phone,
+          fullName: fullName.trim(),
+          ...(email.trim() ? { email: email.trim() } : {}),
+        },
+        token,
+      );
+
+      if (!response.success || !response.data) {
+        Alert.alert('Unable to complete registration', response.error ?? 'Something went wrong.', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Retry', onPress: () => void continueToOtp() },
+        ]);
+        return;
+      }
+
+      if (!response.data.doneOnBoarding) {
+        router.replace('/(auth)/onboarding');
+        return;
+      }
+
+      router.replace('/(auth)/permissions');
+    } catch (error) {
+      Alert.alert('Unable to complete registration', error instanceof Error ? error.message : 'Something went wrong.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Retry', onPress: () => void continueToOtp() },
+      ]);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -60,8 +107,8 @@ export default function SignUpScreen() {
       </View>
 
       <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.heroText }]}>Create Account</Text>
-        <Text style={[styles.subtitle, { color: colors.subtext }]}>Join TrafficPulse and help build smarter cities</Text>
+        <Text style={[styles.title, { color: colors.heroText }]}>Complete Registration</Text>
+        <Text style={[styles.subtitle, { color: colors.subtext }]}>Finish setting up your driver profile to continue</Text>
       </View>
 
       <View style={styles.form}>
@@ -115,32 +162,32 @@ export default function SignUpScreen() {
               />
             </View>
           </View>
-          <Text style={[styles.helperText, { color: colors.subtext }]}>We&apos;ll send a verification code to this number</Text>
+          <Text style={[styles.helperText, { color: colors.subtext }]}>This will be saved as your driver phone number</Text>
         </View>
 
         <Text style={[styles.legalText, { color: colors.subtext }]}>
-          By signing up, you agree to our <Text style={[styles.link, { color: colors.link }]}>Terms of Service</Text> and{' '}
+          By continuing, you agree to our <Text style={[styles.link, { color: colors.link }]}>Terms of Service</Text> and{' '}
           <Text style={[styles.link, { color: colors.link }]}>Privacy Policy</Text>
         </Text>
 
         <Pressable
           accessibilityRole="button"
-          disabled={!isValid}
+          disabled={!isValid || isSubmitting}
           onPress={continueToOtp}
           style={({ pressed }) => [
             styles.primaryButton,
             {
-              backgroundColor: !isValid ? colors.buttonDisabled : pressed ? colors.accentPressed : colors.accent,
+              backgroundColor: !isValid || isSubmitting ? colors.buttonDisabled : pressed ? colors.accentPressed : colors.accent,
             },
           ]}>
-          <Text style={styles.primaryButtonText}>Send Verification Code</Text>
+          <Text style={styles.primaryButtonText}>{isSubmitting ? 'Saving...' : 'Continue'}</Text>
           <MaterialCommunityIcons color="#FFFFFF" name="chevron-right" size={20} />
         </Pressable>
 
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.subtext }]}>Already have an account? </Text>
+          <Text style={[styles.footerText, { color: colors.subtext }]}>Already verified? </Text>
           <Pressable onPress={() => router.replace('/(auth)/login')}>
-            <Text style={[styles.footerLink, { color: colors.link }]}>Login</Text>
+            <Text style={[styles.footerLink, { color: colors.link }]}>Back to login</Text>
           </Pressable>
         </View>
       </View>

@@ -1,7 +1,11 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+
+import { AUTH_ROLE } from '@/src/constants/api';
+import { api } from '@/src/services/api';
+import { storageService } from '@/src/services/storageService';
 
 function formatPhone(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 10);
@@ -19,6 +23,8 @@ function formatPhone(value: string) {
 export default function OtpScreen() {
   const params = useLocalSearchParams<{ phone?: string; mode?: string }>();
   const [otp, setOtp] = useState(Array(6).fill('').join(''));
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
   const phone = typeof params.phone === 'string' ? params.phone : '';
@@ -32,8 +38,13 @@ export default function OtpScreen() {
     : 'Enter the 6-digit code sent to your phone.';
 
   useEffect(() => {
+    if (!phone) {
+      router.replace('/(auth)/login');
+      return;
+    }
+
     inputRefs.current[0]?.focus();
-  }, []);
+  }, [phone]);
 
   function updateOtpDigit(index: number, value: string) {
     const digit = value.replace(/\D/g, '').slice(-1);
@@ -63,12 +74,74 @@ export default function OtpScreen() {
     }
   }
 
-  function continueToPermissions() {
-    if (!isValid) {
+  async function continueToPermissions() {
+    if (!isValid || !phone || isSubmitting) {
       return;
     }
 
-    router.replace('/(auth)/permissions');
+    setIsSubmitting(true);
+
+    try {
+      const response = await api.verifyOtp({ otp, phone, role: AUTH_ROLE });
+
+      if (!response.success || !response.data) {
+        Alert.alert('Unable to verify OTP', response.error ?? 'Something went wrong.', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Retry', onPress: () => void continueToPermissions() },
+        ]);
+        return;
+      }
+
+      await storageService.saveAuthTokens({
+        accessToken: response.data.accessToken,
+        refreshToken: response.data.refreshToke,
+      });
+
+      if (!response.data.hasProfile) {
+        router.replace({ pathname: '/(auth)/signup', params: { phone } });
+        return;
+      }
+
+      if (!response.data.doneOnBoarding) {
+        router.replace('/(auth)/onboarding');
+        return;
+      }
+
+      router.replace('/(auth)/permissions');
+    } catch (error) {
+      Alert.alert('Unable to verify OTP', error instanceof Error ? error.message : 'Something went wrong.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Retry', onPress: () => void continueToPermissions() },
+      ]);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function resendCode() {
+    if (!phone || isResending) {
+      return;
+    }
+
+    setIsResending(true);
+
+    try {
+      const response = await api.sendOtp(phone);
+
+      if (!response.success) {
+        Alert.alert('Unable to resend OTP', response.error ?? 'Something went wrong.', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Retry', onPress: () => void resendCode() },
+        ]);
+      }
+    } catch (error) {
+      Alert.alert('Unable to resend OTP', error instanceof Error ? error.message : 'Something went wrong.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Retry', onPress: () => void resendCode() },
+      ]);
+    } finally {
+      setIsResending(false);
+    }
   }
 
   return (
@@ -112,21 +185,21 @@ export default function OtpScreen() {
 
         <Pressable
           accessibilityRole="button"
-          disabled={!isValid}
+          disabled={!isValid || isSubmitting}
           onPress={continueToPermissions}
           style={({ pressed }) => [
             styles.primaryButton,
-            !isValid ? styles.primaryButtonDisabled : null,
-            pressed && isValid ? styles.primaryButtonPressed : null,
+            !isValid || isSubmitting ? styles.primaryButtonDisabled : null,
+            pressed && isValid && !isSubmitting ? styles.primaryButtonPressed : null,
           ]}>
-          <Text style={styles.primaryButtonText}>Verify OTP</Text>
+          <Text style={styles.primaryButtonText}>{isSubmitting ? 'Verifying...' : 'Verify OTP'}</Text>
           <MaterialCommunityIcons color="#FFFFFF" name="chevron-right" size={20} />
         </Pressable>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Didn&apos;t receive a code?</Text>
-          <Pressable>
-            <Text style={styles.footerLink}>Resend Code</Text>
+          <Pressable accessibilityRole="button" disabled={isResending} onPress={resendCode}>
+            <Text style={styles.footerLink}>{isResending ? 'Resending...' : 'Resend Code'}</Text>
           </Pressable>
         </View>
 

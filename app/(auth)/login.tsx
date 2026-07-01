@@ -1,8 +1,9 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { api } from '@/src/services/api';
 
 function normalizePhone(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 10);
@@ -19,6 +20,7 @@ function formatGhanaPhone(value: string) {
 
 export default function LoginScreen() {
   const [phone, setPhone] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isValid = phone.length === 10 && phone.startsWith('0');
   const colors = {
@@ -36,12 +38,33 @@ export default function LoginScreen() {
     link: '#5B21F0',
   };
 
-  function continueToOtp() {
-    if (!isValid) {
+  async function continueToOtp() {
+    if (!isValid || isSubmitting) {
       return;
     }
 
-    router.push({ pathname: '/(auth)/otp', params: { phone, mode: 'login' } });
+    setIsSubmitting(true);
+
+    try {
+      const response = await api.sendOtp(phone);
+
+      if (!response.success) {
+        Alert.alert('Unable to send OTP', response.error ?? 'Something went wrong.', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Retry', onPress: () => void continueToOtp() },
+        ]);
+        return;
+      }
+
+      router.push({ pathname: '/(auth)/otp', params: { phone, mode: 'login' } });
+    } catch (error) {
+      Alert.alert('Unable to send OTP', error instanceof Error ? error.message : 'Something went wrong.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Retry', onPress: () => void continueToOtp() },
+      ]);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -88,15 +111,15 @@ export default function LoginScreen() {
 
         <Pressable
           accessibilityRole="button"
-          disabled={!isValid}
+          disabled={!isValid || isSubmitting}
           onPress={continueToOtp}
           style={({ pressed }) => [
             styles.primaryButton,
             {
-              backgroundColor: !isValid ? colors.buttonDisabled : pressed ? colors.accentPressed : colors.accent,
+              backgroundColor: !isValid || isSubmitting ? colors.buttonDisabled : pressed ? colors.accentPressed : colors.accent,
             },
           ]}>
-          <Text style={styles.primaryButtonText}>Send OTP</Text>
+          <Text style={styles.primaryButtonText}>{isSubmitting ? 'Sending...' : 'Send OTP'}</Text>
           <MaterialCommunityIcons color="#FFFFFF" name="chevron-right" size={20} />
         </Pressable>
 

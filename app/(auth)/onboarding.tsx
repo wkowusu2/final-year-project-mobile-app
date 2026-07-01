@@ -64,7 +64,7 @@ export default function OnboardingScreen() {
 
   function handlePrimaryAction() {
     if (activeIndex === onboardingSlides.length - 1) {
-      router.replace('/(auth)/signup');
+      router.replace('/(auth)/permissions');
       return;
     }
 

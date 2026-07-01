@@ -1,16 +1,10 @@
 import { API_BASE_URL } from '@/src/constants/api';
-import { DriverProfile, DriverRegistrationInput } from '@/src/types/driver';
+import { DriverRegistrationInput, RegisterDriverResponse, SendOtpResponse, VerifyOtpPayload, VerifyOtpResponse } from '@/src/types/driver';
 import { GpsPoint } from '@/src/types/tracking';
 
-type RegisterResponse = { success: true; driverId: string; token: string };
 type StartResponse = { success: true; sessionId: string };
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  if (API_BASE_URL.includes('example.com')) {
-    await new Promise((resolve) => setTimeout(resolve, 350));
-    return mockResponse<T>(path);
-  }
-
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
@@ -19,37 +13,41 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     },
   });
 
+  const raw = await response.text();
+  const data = raw ? (JSON.parse(raw) as unknown) : null;
+
   if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
+    const message =
+      typeof data === 'object' && data !== null && 'error' in data && typeof data.error === 'string'
+        ? data.error
+        : typeof data === 'object' && data !== null && 'message' in data && typeof data.message === 'string'
+          ? data.message
+          : `API request failed with status ${response.status}`;
+    throw new Error(message);
   }
 
-  return response.json() as Promise<T>;
-}
-
-function mockResponse<T>(path: string): T {
-  if (path === '/drivers/register') {
-    return {
-      success: true,
-      driverId: `driver-${Date.now()}`,
-      token: `mock-token-${Date.now()}`,
-    } as T;
-  }
-
-  if (path === '/tracking/sessions/start') {
-    return { success: true, sessionId: `session-${Date.now()}` } as T;
-  }
-
-  return { success: true } as T;
+  return data as T;
 }
 
 export const api = {
-  async registerDriver(input: DriverRegistrationInput): Promise<DriverProfile> {
-    const response = await request<RegisterResponse>('/drivers/register', {
+  sendOtp(phone: string) {
+    return request<SendOtpResponse>('/auth/send-otp', {
       method: 'POST',
+      body: JSON.stringify({ phone }),
+    });
+  },
+  verifyOtp(payload: VerifyOtpPayload) {
+    return request<VerifyOtpResponse>('/auth/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  registerDriver(input: DriverRegistrationInput, token: string) {
+    return request<RegisterDriverResponse>('/driver-profiles', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(input),
     });
-
-    return { ...input, driverId: response.driverId, token: response.token };
   },
   startSession(driverId: string, token: string, startedAt: string) {
     return request<StartResponse>('/tracking/sessions/start', {
