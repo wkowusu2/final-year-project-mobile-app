@@ -9,6 +9,7 @@ import {
   VerifyOtpPayload,
   VerifyOtpResponse,
 } from '@/src/types/driver';
+import { RoadBounds, RoadsResponse } from '@/src/types/map';
 import { GpsPoint } from '@/src/types/tracking';
 
 type StartResponse = { success: true; sessionId: string };
@@ -137,6 +138,24 @@ export const api = {
       method: 'PATCH',
       requiresAuth: true,
     });
+  },
+  async getRoads(bounds: RoadBounds, signal?: AbortSignal) {
+    const query = new URLSearchParams({
+      west: String(bounds.west),
+      south: String(bounds.south),
+      east: String(bounds.east),
+      north: String(bounds.north),
+    });
+
+    console.log('Requesting roads for viewport', bounds);
+    const response = await request<RoadsResponse>(`/map/roads?${query}`, { signal });
+    console.log('Received roads for viewport', {
+      bounds,
+      featureCount: response.data?.features.length ?? 0,
+      truncated: response.data?.truncated ?? false,
+    });
+
+    return response;
   },
   startSession(driverId: string, startedAt: string) {
     return request<StartResponse>('/tracking/sessions/start', {
