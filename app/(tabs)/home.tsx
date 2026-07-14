@@ -1,10 +1,12 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { incidents } from '@/src/data/mock-data';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
+import { api } from '@/src/services/api';
+import { HomeDashboard } from '@/src/types/home';
 
 const quickActions = [
   { label: 'Live map', detail: 'View traffic', icon: 'map-outline', route: '/(tabs)/map', color: '#6D3DF5', background: '#F0EBFF' },
@@ -13,15 +15,44 @@ const quickActions = [
   { label: 'Rewards', detail: 'Your progress', icon: 'medal-outline', route: '/rewards', color: '#B77908', background: '#FFF6D9' },
 ] as const;
 
-const stats = [
-  { label: 'Distance', value: '8.4', unit: 'km' },
-  { label: 'Drive time', value: '24', unit: 'min' },
-  { label: 'Reports', value: '6', unit: 'this week' },
-] as const;
+function formatRelativeTime(isoTimestamp: string) {
+  const seconds = Math.max(0, Math.floor((Date.now() - new Date(isoTimestamp).getTime()) / 1000));
+  if (seconds < 60) return 'Now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+  if (seconds < 86_400) return `${Math.floor(seconds / 3600)} hr ago`;
+  return `${Math.floor(seconds / 86_400)}d ago`;
+}
 
 export default function HomeScreen() {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const [dashboard, setDashboard] = useState<HomeDashboard | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await api.getHomeDashboard();
+      if (!response.success || !response.data) throw new Error(response.error ?? 'Unable to load your dashboard.');
+      setDashboard(response.data);
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to load your dashboard.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { void loadDashboard(); }, [loadDashboard]));
+
+  const firstName = dashboard?.driver.fullName.split(' ')[0] ?? 'Driver';
+  const stats = [
+    { label: 'Distance', value: `${((dashboard?.metrics.distanceMeters ?? 0) / 1000).toFixed(1)}`, unit: 'km' },
+    { label: 'Trips today', value: String(dashboard?.metrics.tripCount ?? 0), unit: 'drives' },
+    { label: 'Reports', value: String(dashboard?.metrics.reportCount ?? 0), unit: 'shared' },
+  ];
+  const trackingActive = dashboard?.metrics.trackingActive ?? false;
 
   return (
     <ScrollView
@@ -31,10 +62,10 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View>
           <Text style={[styles.greeting, { color: theme.textSecondary }]}>GOOD MORNING</Text>
-          <Text style={[styles.name, { color: theme.textPrimary }]}>Ama, drive safe.</Text>
+          <Text style={[styles.name, { color: theme.textPrimary }]}>{firstName}, drive safe.</Text>
           <View style={styles.locationRow}>
             <MaterialCommunityIcons color={theme.primary} name="map-marker" size={15} />
-            <Text style={[styles.location, { color: theme.textSecondary }]}>Accra, Greater Accra</Text>
+            <Text style={[styles.location, { color: theme.textSecondary }]}>{dashboard?.driver.location ?? 'Loading your area...'}</Text>
           </View>
         </View>
         <Pressable
@@ -50,13 +81,13 @@ export default function HomeScreen() {
       <View style={styles.tripCard}>
         <View style={styles.tripTopRow}>
           <View style={styles.statusPill}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>READY TO TRACK</Text>
+            <View style={[styles.statusDot, { backgroundColor: trackingActive ? '#74E7B7' : '#CDBEFF' }]} />
+            <Text style={styles.statusText}>{trackingActive ? 'TRACKING ACTIVE' : 'READY TO TRACK'}</Text>
           </View>
           <MaterialCommunityIcons color="#CDBEFF" name="crosshairs-gps" size={23} />
         </View>
-        <Text style={styles.tripTitle}>Turn today’s drive{`\n`}into better roads.</Text>
-        <Text style={styles.tripDescription}>Share anonymous movement data to improve traffic across Accra.</Text>
+        <Text style={styles.tripTitle}>{trackingActive ? 'Your drive is{`\n`}making roads better.' : 'Turn today’s drive{`\n`}into better roads.'}</Text>
+        <Text style={styles.tripDescription}>{trackingActive && dashboard?.metrics.currentSpeedMps != null ? `Current speed: ${Math.round(dashboard.metrics.currentSpeedMps * 3.6)} km/h` : 'Share anonymous movement data to improve traffic across Accra.'}</Text>
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push('/active-tracking')}
@@ -64,7 +95,7 @@ export default function HomeScreen() {
           <View style={styles.startIcon}>
             <MaterialCommunityIcons color="#5B21F0" name="navigation" size={17} />
           </View>
-          <Text style={styles.startButtonText}>Start a drive</Text>
+          <Text style={styles.startButtonText}>{trackingActive ? 'View active drive' : 'Start a drive'}</Text>
           <MaterialCommunityIcons color="#5B21F0" name="arrow-right" size={19} />
         </Pressable>
       </View>
@@ -77,6 +108,9 @@ export default function HomeScreen() {
           </View>
         ))}
       </View>
+
+      {loading && <View style={styles.loadingRow}><ActivityIndicator color={theme.primary} /><Text style={[styles.loadingText, { color: theme.textSecondary }]}>Refreshing your dashboard...</Text></View>}
+      {error && <Pressable accessibilityRole="button" onPress={() => void loadDashboard()} style={[styles.errorRow, { backgroundColor: theme.dangerSoft }]}><MaterialCommunityIcons color={theme.danger} name="alert-circle-outline" size={18} /><Text style={[styles.errorText, { color: theme.danger }]} numberOfLines={2}>{error}</Text><Text style={[styles.retryText, { color: theme.danger }]}>Retry</Text></Pressable>}
 
       <View style={styles.sectionHeading}>
         <View>
@@ -113,25 +147,26 @@ export default function HomeScreen() {
         </Pressable>
       </View>
       <View style={[styles.incidentList, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        {incidents.slice(0, 3).map((incident, index) => (
+        {dashboard?.incidents.map((incident, index) => (
           <Pressable
             key={incident.id}
             accessibilityRole="button"
             onPress={() => router.push({ pathname: '/incident-details', params: { id: incident.id } })}
             style={({ pressed }) => [styles.incidentRow, index < 2 && { borderBottomWidth: 1, borderBottomColor: theme.border }, { opacity: pressed ? 0.82 : 1 }]}>
-            <View style={[styles.incidentIcon, { backgroundColor: incident.severity === 'High' ? '#FFF0F1' : incident.severity === 'Medium' ? '#FFF6E8' : '#EAF9EF' }]}>
-              <MaterialCommunityIcons color={incident.severity === 'High' ? '#E5484D' : incident.severity === 'Medium' ? '#D97706' : '#16A34A'} name="alert-outline" size={20} />
+            <View style={[styles.incidentIcon, { backgroundColor: incident.severity === 'high' || incident.severity === 'critical' ? '#FFF0F1' : incident.severity === 'medium' ? '#FFF6E8' : '#EAF9EF' }]}>
+              <MaterialCommunityIcons color={incident.severity === 'high' || incident.severity === 'critical' ? '#E5484D' : incident.severity === 'medium' ? '#D97706' : '#16A34A'} name="alert-outline" size={20} />
             </View>
             <View style={styles.incidentCopy}>
               <Text numberOfLines={1} style={[styles.incidentTitle, { color: theme.textPrimary }]}>{incident.type}</Text>
-              <Text numberOfLines={1} style={[styles.incidentRoad, { color: theme.textSecondary }]}>{incident.roadName}</Text>
+              <Text numberOfLines={1} style={[styles.incidentRoad, { color: theme.textSecondary }]}>{incident.roadName}, {incident.city}</Text>
             </View>
             <View style={styles.incidentTimeWrap}>
-              <Text style={[styles.incidentTime, { color: theme.textSecondary }]}>{incident.timestamp}</Text>
+              <Text style={[styles.incidentTime, { color: theme.textSecondary }]}>{formatRelativeTime(incident.createdAt)}</Text>
               <MaterialCommunityIcons color={theme.textMuted} name="chevron-right" size={18} />
             </View>
           </Pressable>
         ))}
+        {!loading && !error && dashboard?.incidents.length === 0 && <View style={styles.emptyIncidents}><MaterialCommunityIcons color={theme.textMuted} name="check-circle-outline" size={21} /><Text style={[styles.emptyIncidentsText, { color: theme.textSecondary }]}>No recent community reports.</Text></View>}
       </View>
     </ScrollView>
   );
@@ -181,4 +216,11 @@ const styles = StyleSheet.create({
   incidentRoad: { fontSize: 12, lineHeight: 17, fontWeight: '500', marginTop: 1 },
   incidentTimeWrap: { alignItems: 'flex-end', flexDirection: 'row', gap: 2 },
   incidentTime: { fontSize: 11, fontWeight: '600' },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: -10 },
+  loadingText: { fontSize: 12, fontWeight: '600' },
+  errorRow: { minHeight: 50, borderRadius: 14, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  errorText: { flex: 1, fontSize: 11, lineHeight: 16, fontWeight: '600' },
+  retryText: { fontSize: 12, fontWeight: '800' },
+  emptyIncidents: { minHeight: 76, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 14 },
+  emptyIncidentsText: { fontSize: 13, fontWeight: '600' },
 });

@@ -1,12 +1,14 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { spacing } from '@/src/constants/design';
-import { locationSuggestions, reportIncidentTypes, severityOptions } from '@/src/data/report-data';
+import { reportIncidentTypes, severityOptions } from '@/src/data/report-data';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
+import { api } from '@/src/services/api';
+import { DetectedLocation, getDetectedLocation } from '@/src/services/locationService';
 
 export default function ReportIncidentScreen() {
   const theme = useAppTheme();
@@ -14,8 +16,52 @@ export default function ReportIncidentScreen() {
   const [selectedType, setSelectedType] = useState<(typeof reportIncidentTypes)[number]['id']>(reportIncidentTypes[0].id);
   const [description, setDescription] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState<(typeof severityOptions)[number]['id']>('medium');
-  const location = locationSuggestions[0];
-  const canSubmit = description.trim().length > 0 && location.length > 0;
+  const [detectedLocation, setDetectedLocation] = useState<DetectedLocation | null>(null);
+  const [locating, setLocating] = useState(true);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const canSubmit = description.trim().length > 0 && Boolean(detectedLocation) && !locating && !submitting;
+  const incidentType = reportIncidentTypes.find((item) => item.id === selectedType)?.label ?? 'Other Hazard';
+
+  const detectLocation = useCallback(async () => {
+    setLocating(true);
+    setLocationError(null);
+    try {
+      setDetectedLocation(await getDetectedLocation());
+    } catch (caught) {
+      setDetectedLocation(null);
+      setLocationError(caught instanceof Error ? caught.message : 'Unable to detect your location.');
+    } finally {
+      setLocating(false);
+    }
+  }, []);
+
+  useEffect(() => { void detectLocation(); }, [detectLocation]);
+
+  async function submitReport() {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      if (!detectedLocation) throw new Error('Your location is still being detected.');
+      const response = await api.createIncident({
+        type: incidentType,
+        description: description.trim(),
+        severity: selectedSeverity,
+        roadName: detectedLocation.roadName,
+        city: detectedLocation.city,
+        latitude: detectedLocation.latitude,
+        longitude: detectedLocation.longitude,
+      });
+      if (!response.success) throw new Error(response.error ?? 'Unable to submit your report.');
+      router.replace('/(tabs)/home');
+    } catch (caught) {
+      setSubmitError(caught instanceof Error ? caught.message : 'Unable to submit your report.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <ScrollView
@@ -120,21 +166,22 @@ export default function ReportIncidentScreen() {
       <View>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionLabel, { color: theme.textPrimary }]}>Location</Text>
-          <Text style={[styles.sectionHint, { color: theme.textSecondary }]}>Auto-detected</Text>
+          <Text style={[styles.sectionHint, { color: theme.textSecondary }]}>{locating ? 'Detecting...' : 'Auto-detected'}</Text>
         </View>
         <Pressable
           accessibilityRole="button"
-          style={({ pressed }) => [styles.locationField, { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.86 : 1 }]}>
+          onPress={() => void detectLocation()}
+          style={({ pressed }) => [styles.locationField, { backgroundColor: theme.surface, borderColor: locationError ? theme.danger : theme.border, opacity: pressed ? 0.86 : 1 }]}>
           <View style={styles.locationLeft}>
             <View style={[styles.locationIcon, { backgroundColor: theme.primarySoft }]}>
               <MaterialCommunityIcons color={theme.primary} name="map-marker-outline" size={18} />
             </View>
             <View style={styles.locationCopy}>
-              <Text numberOfLines={1} style={[styles.locationTitle, { color: theme.textPrimary }]}>{location}</Text>
-              <Text style={[styles.locationSubtitle, { color: theme.textSecondary }]}>GPS location attached to this report</Text>
+              <Text numberOfLines={1} style={[styles.locationTitle, { color: theme.textPrimary }]}>{locating ? 'Finding your location...' : detectedLocation?.label ?? 'Location unavailable'}</Text>
+              <Text style={[styles.locationSubtitle, { color: locationError ? theme.danger : theme.textSecondary }]}>{locationError ?? (detectedLocation ? 'GPS location attached to this report' : 'Tap to try again')}</Text>
             </View>
           </View>
-          <MaterialCommunityIcons color={theme.textMuted} name="chevron-right" size={20} />
+          {locating ? <ActivityIndicator color={theme.primary} size="small" /> : <MaterialCommunityIcons color={theme.textMuted} name="refresh" size={20} />}
         </Pressable>
       </View>
 
@@ -158,11 +205,12 @@ export default function ReportIncidentScreen() {
       <Pressable
         accessibilityRole="button"
         disabled={!canSubmit}
-        onPress={() => router.push('/incident-details')}
+        onPress={() => void submitReport()}
         style={({ pressed }) => [styles.submitButton, { backgroundColor: canSubmit ? theme.primary : '#D2D6E3', opacity: pressed && canSubmit ? 0.9 : 1 }]}>
         <MaterialCommunityIcons color="#FFFFFF" name="send-outline" size={18} />
-        <Text style={styles.submitButtonText}>Submit report</Text>
+        <Text style={styles.submitButtonText}>{submitting ? 'Submitting report...' : 'Submit report'}</Text>
       </Pressable>
+      {submitError && <Text style={[styles.submitError, { color: theme.danger }]}>{submitError}</Text>}
     </ScrollView>
   );
 }
@@ -202,4 +250,5 @@ const styles = StyleSheet.create({
   photoText: { fontSize: 13, fontWeight: '700' },
   submitButton: { minHeight: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 9 },
   submitButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
+  submitError: { fontSize: 12, lineHeight: 17, fontWeight: '600', textAlign: 'center', marginTop: -10 },
 });

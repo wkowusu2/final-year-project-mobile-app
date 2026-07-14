@@ -10,6 +10,14 @@ import {
   VerifyOtpResponse,
 } from '@/src/types/driver';
 import { RoadBounds, RoadsResponse } from '@/src/types/map';
+import {
+  ConfirmIncidentResponse,
+  CreateIncidentInput,
+  CreateIncidentResponse,
+  HomeDashboardResponse,
+  IncidentDetailResponse,
+  IncidentsResponse,
+} from '@/src/types/home';
 import { TrackingPoint, TrackingSession } from '@/src/types/tracking';
 
 type TrackingSessionResponse = {
@@ -154,6 +162,30 @@ export const api = {
   completeOnboarding() {
     return request<DoneOnboardingResponse>('/driver-profiles/done-onboarding', {
       method: 'PATCH',
+      requiresAuth: true,
+    });
+  },
+  getHomeDashboard() {
+    return request<HomeDashboardResponse>('/driver-profiles/home', {
+      requiresAuth: true,
+    });
+  },
+  createIncident(input: CreateIncidentInput) {
+    return request<CreateIncidentResponse>('/incidents', {
+      method: 'POST',
+      requiresAuth: true,
+      body: JSON.stringify(input),
+    });
+  },
+  getMyIncidents() {
+    return request<IncidentsResponse>('/incidents', { requiresAuth: true });
+  },
+  getIncident(incidentId: string) {
+    return request<IncidentDetailResponse>(`/incidents/${incidentId}`, { requiresAuth: true });
+  },
+  confirmIncident(incidentId: string) {
+    return request<ConfirmIncidentResponse>(`/incidents/${incidentId}/confirm`, {
+      method: 'POST',
       requiresAuth: true,
     });
   },

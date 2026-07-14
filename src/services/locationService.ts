@@ -29,6 +29,33 @@ export async function getCurrentLocation() {
   };
 }
 
+export type DetectedLocation = {
+  latitude: number;
+  longitude: number;
+  roadName: string;
+  city: string;
+  label: string;
+};
+
+export async function getDetectedLocation(): Promise<DetectedLocation> {
+  const location = await getCurrentLocationFix();
+  const { latitude, longitude } = location.coords;
+
+  try {
+    const [address] = await Location.reverseGeocodeAsync({ latitude, longitude });
+    const roadName = [address.name, address.streetNumber, address.street]
+      .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+      .filter((part, index, parts) => parts.indexOf(part) === index)
+      .join(' ');
+    const city = address.city ?? address.subregion ?? address.region ?? 'Current area';
+    const resolvedRoadName = roadName || 'Current location';
+    return { latitude, longitude, roadName: resolvedRoadName, city, label: `${resolvedRoadName}, ${city}` };
+  } catch {
+    const label = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+    return { latitude, longitude, roadName: 'Current location', city: 'Current area', label };
+  }
+}
+
 function createUuid() {
   return Crypto.randomUUID();
 }
