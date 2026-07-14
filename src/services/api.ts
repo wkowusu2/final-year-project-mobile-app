@@ -92,8 +92,9 @@ async function refreshAuthTokens() {
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { requiresAuth = false, retryOnAuthFailure = true, ...fetchOptions } = options;
+  const isFormData = typeof FormData !== 'undefined' && fetchOptions.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(fetchOptions.headers ?? {}),
   } as Record<string, string>;
 
@@ -171,10 +172,19 @@ export const api = {
     });
   },
   createIncident(input: CreateIncidentInput) {
+    const formData = new FormData();
+    formData.append('type', input.type);
+    formData.append('description', input.description);
+    formData.append('severity', input.severity);
+    formData.append('roadName', input.roadName);
+    formData.append('city', input.city);
+    formData.append('latitude', String(input.latitude));
+    formData.append('longitude', String(input.longitude));
+    if (input.photo) formData.append('photo', input.photo as unknown as Blob);
     return request<CreateIncidentResponse>('/incidents', {
       method: 'POST',
       requiresAuth: true,
-      body: JSON.stringify(input),
+      body: formData,
     });
   },
   getMyIncidents() {

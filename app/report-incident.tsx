@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { spacing } from '@/src/constants/design';
@@ -20,6 +21,7 @@ export default function ReportIncidentScreen() {
   const [locating, setLocating] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [photo, setPhoto] = useState<{ uri: string; name: string; type: string } | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const canSubmit = description.trim().length > 0 && Boolean(detectedLocation) && !locating && !submitting;
   const incidentType = reportIncidentTypes.find((item) => item.id === selectedType)?.label ?? 'Other Hazard';
@@ -39,6 +41,20 @@ export default function ReportIncidentScreen() {
 
   useEffect(() => { void detectLocation(); }, [detectLocation]);
 
+  async function choosePhoto(source: 'camera' | 'library') {
+    const permission = source === 'camera'
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) { setSubmitError(`Photo ${source === 'camera' ? 'camera' : 'library'} permission was not granted.`); return; }
+    const result = source === 'camera'
+      ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.75 })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.75 });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    setPhoto({ uri: asset.uri, name: asset.fileName ?? `incident-${Date.now()}.jpg`, type: asset.mimeType ?? 'image/jpeg' });
+    setSubmitError(null);
+  }
+
   async function submitReport() {
     if (!canSubmit) return;
     setSubmitting(true);
@@ -53,6 +69,7 @@ export default function ReportIncidentScreen() {
         city: detectedLocation.city,
         latitude: detectedLocation.latitude,
         longitude: detectedLocation.longitude,
+        photo: photo ?? undefined,
       });
       if (!response.success) throw new Error(response.error ?? 'Unable to submit your report.');
       router.replace('/(tabs)/home');
@@ -191,15 +208,16 @@ export default function ReportIncidentScreen() {
           <Text style={[styles.sectionHint, { color: theme.textSecondary }]}>Optional</Text>
         </View>
         <View style={styles.photoRow}>
-          <Pressable style={({ pressed }) => [styles.photoCard, { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.82 : 1 }]} accessibilityRole="button">
+          <Pressable onPress={() => void choosePhoto('camera')} style={({ pressed }) => [styles.photoCard, { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.82 : 1 }]} accessibilityRole="button">
             <View style={[styles.photoIcon, { backgroundColor: theme.primarySoft }]}><MaterialCommunityIcons color={theme.primary} name="camera-outline" size={20} /></View>
             <Text style={[styles.photoText, { color: theme.textPrimary }]}>Take photo</Text>
           </Pressable>
-          <Pressable style={({ pressed }) => [styles.photoCard, { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.82 : 1 }]} accessibilityRole="button">
+          <Pressable onPress={() => void choosePhoto('library')} style={({ pressed }) => [styles.photoCard, { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.82 : 1 }]} accessibilityRole="button">
             <View style={[styles.photoIcon, { backgroundColor: theme.primarySoft }]}><MaterialCommunityIcons color={theme.primary} name="image-outline" size={20} /></View>
             <Text style={[styles.photoText, { color: theme.textPrimary }]}>Choose photo</Text>
           </Pressable>
         </View>
+        {photo && <View style={styles.previewRow}><Image source={{ uri: photo.uri }} style={styles.previewImage} /><Text numberOfLines={1} style={[styles.previewText, { color: theme.textSecondary }]}>{photo.name}</Text><Pressable accessibilityRole="button" onPress={() => setPhoto(null)}><MaterialCommunityIcons color={theme.danger} name="close-circle-outline" size={21} /></Pressable></View>}
       </View>
 
       <Pressable
@@ -251,4 +269,7 @@ const styles = StyleSheet.create({
   submitButton: { minHeight: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 9 },
   submitButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
   submitError: { fontSize: 12, lineHeight: 17, fontWeight: '600', textAlign: 'center', marginTop: -10 },
+  previewRow: { minHeight: 54, borderRadius: 14, padding: 7, flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: '#F4F0FF' },
+  previewImage: { width: 40, height: 40, borderRadius: 10 },
+  previewText: { flex: 1, fontSize: 12, fontWeight: '600' },
 });

@@ -37,6 +37,7 @@ export type CreateIncidentInput = {
   city: string;
   latitude: number;
   longitude: number;
+  photo?: { uri: string; name: string; type: string };
 };
 
 export type CreateIncidentResponse = {
