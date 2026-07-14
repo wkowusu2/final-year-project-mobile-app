@@ -79,7 +79,7 @@ export default function ActiveTrackingScreen() {
   const isActive = state?.lifecycle === 'active';
   const isStopPending = state?.lifecycle === 'stopPending';
   const isPaused = state?.lifecycle === 'pausedOffline';
-  const speedKmh = latestPoint?.speedMps == null ? '—' : `${Math.round(latestPoint.speedMps * 3.6)} km/h`;
+  const speedKmh = latestPoint?.speedMps == null ? 'Waiting' : `${Math.round(latestPoint.speedMps * 3.6)} km/h`;
   const accuracy = latestPoint?.accuracyMeters == null ? 'Waiting' : `${Math.round(latestPoint.accuracyMeters)} m`;
   const trackingLabel = isActive ? 'Drive in progress' : isPaused ? 'Tracking paused' : isStopPending ? 'Finishing drive' : 'Ready to drive';
 

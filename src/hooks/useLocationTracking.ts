@@ -62,8 +62,20 @@ export function useLocationTracking(isOnline: boolean) {
     const current = stateRef.current;
     if (!current || accuracy == null || accuracy > GPS_MAX_ACCURACY_METERS) return;
 
-    const point = toGpsPoint(location);
+    const rawPoint = toGpsPoint(location);
     const previous = current.latestPoint;
+    const elapsedSeconds = previous
+      ? (new Date(rawPoint.recordedAt).getTime() - new Date(previous.recordedAt).getTime()) / 1000
+      : 0;
+    const calculatedSpeed = previous && elapsedSeconds > 0
+      ? distanceBetween(previous, rawPoint) / elapsedSeconds
+      : 0;
+    const point: TrackingPoint = {
+      ...rawPoint,
+      // Some devices omit the optional native GPS speed. Calculate it from
+      // consecutive accepted GPS fixes so the driver still sees a live speed.
+      speedMps: rawPoint.speedMps ?? calculatedSpeed,
+    };
     const next: ActiveTrackingState = {
       ...current,
       latestPoint: point,
