@@ -3,313 +3,179 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { radius, spacing } from '@/src/constants/design';
+import { currentUser } from '@/src/data/mock-data';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
+import { storageService } from '@/src/services/storageService';
 
 const accountStats = [
-  { id: 'tracked', label: 'KM Tracked', value: '1,284', icon: 'map-marker-distance' },
-  { id: 'reports', label: 'Reports', value: '6', icon: 'file-document-outline' },
-  { id: 'score', label: 'Score', value: '3,240', icon: 'star-outline' },
+  { label: 'Distance', value: '1,284', unit: 'km', icon: 'map-marker-distance', color: '#6D3DF5', background: '#F0EBFF' },
+  { label: 'Reports', value: '46', unit: 'shared', icon: 'file-document-outline', color: '#078B7C', background: '#E4F8F5' },
+  { label: 'Impact', value: '4.8k', unit: 'points', icon: 'star-outline', color: '#B77908', background: '#FFF6D9' },
 ] as const;
 
 const menuItems = [
-  { id: 'settings', title: 'Settings', subtitle: 'App preferences & controls', icon: 'cog-outline', route: '/settings', tone: 'primary' },
-  { id: 'privacy', title: 'Privacy', subtitle: 'Data sharing & anonymization', icon: 'shield-outline', tone: 'teal' },
-  { id: 'help', title: 'Help & Support', subtitle: 'FAQ, contact us', icon: 'help-circle-outline', tone: 'purple' },
-  { id: 'logout', title: 'Log Out', subtitle: 'Sign out of your account', icon: 'logout-variant', tone: 'danger', route: '/(auth)/login' },
+  { id: 'settings', title: 'Settings', subtitle: 'Preferences and app controls', icon: 'cog-outline', route: '/settings' as const, color: '#6D3DF5', background: '#F0EBFF' },
+  { id: 'rewards', title: 'Rewards', subtitle: 'Badges and contribution progress', icon: 'medal-outline', route: '/rewards' as const, color: '#B77908', background: '#FFF6D9' },
+  { id: 'privacy', title: 'Your privacy', subtitle: 'Review your anonymous data sharing', icon: 'shield-check-outline', route: '/settings' as const, color: '#078B7C', background: '#E4F8F5' },
 ] as const;
 
 export default function ProfileScreen() {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
 
+  async function handleLogout() {
+    await storageService.logout();
+    router.replace('/(auth)/login');
+  }
+
   return (
     <ScrollView
       style={[styles.screen, { backgroundColor: theme.background }]}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.sm, paddingBottom: insets.bottom + 20 }]}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }]}
       showsVerticalScrollIndicator={false}>
-      <View style={[styles.profileCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        <View style={styles.profileTopRow}>
-          <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
-            <Text style={styles.avatarText}>JD</Text>
-          </View>
+      <View style={styles.header}>
+        <View>
+          <Text style={[styles.eyebrow, { color: theme.textSecondary }]}>YOUR ACCOUNT</Text>
+          <Text style={[styles.pageTitle, { color: theme.textPrimary }]}>Profile</Text>
+        </View>
+        <Pressable
+          accessibilityLabel="Open settings"
+          accessibilityRole="button"
+          onPress={() => router.push('/settings')}
+          style={({ pressed }) => [styles.settingsButton, { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.8 : 1 }]}>
+          <MaterialCommunityIcons color={theme.textPrimary} name="cog-outline" size={21} />
+        </Pressable>
+      </View>
 
+      <View style={styles.profileHero}>
+        <View style={styles.profileHeroTop}>
+          <View style={styles.avatar}><Text style={styles.avatarText}>{currentUser.photoInitials}</Text></View>
           <View style={styles.profileCopy}>
-            <Text style={[styles.name, { color: theme.textPrimary }]}>Juan dela Cruz</Text>
-            <Text style={[styles.email, { color: theme.textSecondary }]}>juan@example.com</Text>
+            <Text style={styles.name}>{currentUser.name}</Text>
+            <Text style={styles.location}>{currentUser.location}</Text>
             <View style={styles.badgeRow}>
-              <View style={[styles.badgeIcon, { backgroundColor: '#FEF3C7' }]}>
-                <MaterialCommunityIcons color="#D97706" name="medal" size={12} />
-              </View>
-              <Text style={[styles.badgeText, { color: '#B45309' }]}>Gold Contributor</Text>
+              <MaterialCommunityIcons color="#F8D782" name="medal-outline" size={14} />
+              <Text style={styles.badgeText}>Gold contributor</Text>
             </View>
           </View>
         </View>
+        <View style={styles.heroDivider} />
+        <View style={styles.heroFooter}>
+          <View>
+            <Text style={styles.heroFooterLabel}>CONTRIBUTION LEVEL</Text>
+            <Text style={styles.heroFooterValue}>{currentUser.contributionLevel}</Text>
+          </View>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/rewards')} hitSlop={8}>
+            <Text style={styles.rewardsLink}>View rewards</Text>
+          </Pressable>
+        </View>
       </View>
 
-      <View style={styles.metricRow}>
-        {accountStats.map((metric) => (
-          <View key={metric.id} style={[styles.metricCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <View style={[styles.metricIcon, metric.id === 'reports' ? styles.metricIconTeal : metric.id === 'score' ? styles.metricIconAmber : styles.metricIconPurple]}>
-              <MaterialCommunityIcons
-                color={metric.id === 'reports' ? '#14B8A6' : metric.id === 'score' ? '#F59E0B' : '#7C3AED'}
-                name={metric.icon as never}
-                size={18}
-              />
+      <View style={styles.statsRow}>
+        {accountStats.map((stat) => (
+          <View key={stat.label} style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={[styles.statIcon, { backgroundColor: stat.background }]}>
+              <MaterialCommunityIcons color={stat.color} name={stat.icon} size={18} />
             </View>
-            <Text style={[styles.metricValue, { color: theme.textPrimary }]}>{metric.value}</Text>
-            <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>{metric.label}</Text>
+            <Text style={[styles.statValue, { color: theme.textPrimary }]}>{stat.value}</Text>
+            <Text style={[styles.statUnit, { color: theme.textSecondary }]}>{stat.unit}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{stat.label}</Text>
           </View>
         ))}
       </View>
 
-      <View style={[styles.levelCard, { backgroundColor: '#ECE4FF' }]}>
-        <View style={styles.levelRow}>
-          <Text style={styles.levelTitle}>Gold Level</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/rewards')}>
-            <Text style={styles.levelAction}>View Rewards</Text>
-          </Pressable>
+      <View style={[styles.progressCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <View style={styles.progressTitleRow}>
+          <View style={[styles.progressIcon, { backgroundColor: theme.primarySoft }]}><MaterialCommunityIcons color={theme.primary} name="trending-up" size={20} /></View>
+          <View style={styles.progressCopy}>
+            <Text style={[styles.progressTitle, { color: theme.textPrimary }]}>Close to Platinum</Text>
+            <Text style={[styles.progressHint, { color: theme.textSecondary }]}>320 points until your next level</Text>
+          </View>
+          <Text style={[styles.progressPercentage, { color: theme.primary }]}>72%</Text>
         </View>
-        <View style={styles.progressTrack}>
-          <View style={styles.progressFill} />
-        </View>
-        <Text style={styles.levelHint}>320/500 pts to Platinum</Text>
+        <View style={[styles.progressTrack, { backgroundColor: theme.primarySoft }]}><View style={[styles.progressFill, { backgroundColor: theme.primary }]} /></View>
       </View>
 
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Account</Text>
+        <Text style={[styles.sectionHint, { color: theme.textSecondary }]}>Manage your experience</Text>
+      </View>
       <View style={styles.menuList}>
-        {menuItems.map((item) => {
-          const isDanger = item.tone === 'danger';
-          const iconBg = item.tone === 'primary' ? '#F3E8FF' : item.tone === 'teal' ? '#ECFBF7' : item.tone === 'purple' ? '#F5F3FF' : '#FEE2E2';
-          const iconColor = item.tone === 'primary' ? '#7C3AED' : item.tone === 'teal' ? '#14B8A6' : item.tone === 'purple' ? '#A855F7' : '#EF4444';
-
-          return (
-            <Pressable
-              key={item.id}
-              accessibilityRole="button"
-              onPress={() => {
-                if (item.route) {
-                  if (item.route === '/(auth)/login') {
-                    router.replace(item.route);
-                    return;
-                  }
-                  router.push(item.route);
-                }
-              }}
-              style={({ pressed }) => [
-                styles.menuItem,
-                {
-                  backgroundColor: isDanger ? '#FFF1F2' : theme.surface,
-                  borderColor: isDanger ? '#FECACA' : theme.border,
-                  opacity: pressed ? 0.96 : 1,
-                },
-              ]}>
-              <View style={styles.menuLeft}>
-                <View style={[styles.menuIcon, { backgroundColor: iconBg }]}>
-                  <MaterialCommunityIcons color={iconColor} name={item.icon as never} size={18} />
-                </View>
-                <View style={styles.menuTextBlock}>
-                  <Text style={[styles.menuTitle, { color: isDanger ? '#EF4444' : theme.textPrimary }]}>{item.title}</Text>
-                  <Text style={[styles.menuSubtitle, { color: isDanger ? '#FB7185' : theme.textSecondary }]}>{item.subtitle}</Text>
-                </View>
-              </View>
-              <MaterialCommunityIcons color={isDanger ? '#FB7185' : theme.textMuted} name="chevron-right" size={20} />
-            </Pressable>
-          );
-        })}
+        {menuItems.map((item) => (
+          <Pressable
+            key={item.id}
+            accessibilityRole="button"
+            onPress={() => router.push(item.route)}
+            style={({ pressed }) => [styles.menuItem, { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.84 : 1 }]}>
+            <View style={[styles.menuIcon, { backgroundColor: item.background }]}><MaterialCommunityIcons color={item.color} name={item.icon} size={20} /></View>
+            <View style={styles.menuCopy}>
+              <Text style={[styles.menuTitle, { color: theme.textPrimary }]}>{item.title}</Text>
+              <Text style={[styles.menuSubtitle, { color: theme.textSecondary }]}>{item.subtitle}</Text>
+            </View>
+            <MaterialCommunityIcons color={theme.textMuted} name="chevron-right" size={20} />
+          </Pressable>
+        ))}
       </View>
 
-      <Text style={[styles.footer, { color: theme.textMuted }]}>TrafficPulse v2.41</Text>
-      <Text style={[styles.footerSubtext, { color: theme.textMuted }]}>© 2026 TrafficPulse Inc.</Text>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => void handleLogout()}
+        style={({ pressed }) => [styles.logoutButton, { borderColor: '#F8C7C9', backgroundColor: '#FFF4F4', opacity: pressed ? 0.8 : 1 }]}>
+        <MaterialCommunityIcons color="#D84045" name="logout-variant" size={19} />
+        <Text style={styles.logoutText}>Log out</Text>
+      </Pressable>
+
+      <Text style={[styles.footer, { color: theme.textMuted }]}>RoadPulse Ghana · Version 1.0.0</Text>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 12,
-    gap: 12,
-  },
-  profileCard: {
-    borderWidth: 1,
-    borderRadius: 24,
-    padding: 16,
-  },
-  profileTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.round,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  profileCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  name: {
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: -0.3,
-  },
-  email: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 2,
-  },
-  badgeIcon: {
-    width: 16,
-    height: 16,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  metricRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  metricCard: {
-    flex: 1,
-    minHeight: 98,
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metricIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  metricIconPurple: {
-    backgroundColor: '#F3E8FF',
-  },
-  metricIconTeal: {
-    backgroundColor: '#ECFBF7',
-  },
-  metricIconAmber: {
-    backgroundColor: '#FFF7E0',
-  },
-  metricValue: {
-    fontSize: 22,
-    lineHeight: 26,
-    fontWeight: '900',
-    letterSpacing: -0.3,
-  },
-  metricLabel: {
-    marginTop: 2,
-    fontSize: 15,
-    lineHeight: 18,
-  },
-  levelCard: {
-    borderRadius: 18,
-    padding: 14,
-    gap: 10,
-  },
-  levelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  levelTitle: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#1F1147',
-  },
-  levelAction: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#A855F7',
-  },
-  progressTrack: {
-    height: 8,
-    borderRadius: 999,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(124, 58, 237, 0.14)',
-  },
-  progressFill: {
-    width: '72%',
-    height: '100%',
-    borderRadius: 999,
-    backgroundColor: '#6D28D9',
-  },
-  levelHint: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#6B21A8',
-  },
-  menuList: {
-    gap: 10,
-  },
-  menuItem: {
-    minHeight: 72,
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  menuLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  menuIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuTextBlock: {
-    flex: 1,
-    gap: 2,
-  },
-  menuTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  menuSubtitle: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  footer: {
-    textAlign: 'center',
-    fontSize: 12,
-    marginTop: 8,
-  },
-  footerSubtext: {
-    textAlign: 'center',
-    fontSize: 12,
-    marginTop: -8,
-  },
+  screen: { flex: 1 },
+  content: { paddingHorizontal: 20, gap: 20 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  eyebrow: { fontSize: 10, lineHeight: 14, fontWeight: '900', letterSpacing: 1 },
+  pageTitle: { fontSize: 28, lineHeight: 34, fontWeight: '800', letterSpacing: -0.7, marginTop: 1 },
+  settingsButton: { width: 46, height: 46, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  profileHero: { backgroundColor: '#5420CD', borderRadius: 25, padding: 19 },
+  profileHeroTop: { flexDirection: 'row', alignItems: 'center', gap: 13 },
+  avatar: { width: 58, height: 58, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
+  avatarText: { color: '#5420CD', fontSize: 20, fontWeight: '900' },
+  profileCopy: { flex: 1 },
+  name: { color: '#FFFFFF', fontSize: 21, lineHeight: 26, fontWeight: '800', letterSpacing: -0.3 },
+  location: { color: '#DCD0FF', fontSize: 12, lineHeight: 17, fontWeight: '500', marginTop: 2 },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 7 },
+  badgeText: { color: '#F8D782', fontSize: 11, fontWeight: '800' },
+  heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginVertical: 17 },
+  heroFooter: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 },
+  heroFooterLabel: { color: '#DCD0FF', fontSize: 9, fontWeight: '900', letterSpacing: 0.85 },
+  heroFooterValue: { color: '#FFFFFF', fontSize: 14, fontWeight: '800', marginTop: 3 },
+  rewardsLink: { color: '#FFFFFF', fontSize: 12, fontWeight: '800', textDecorationLine: 'underline' },
+  statsRow: { flexDirection: 'row', gap: 9 },
+  statCard: { flex: 1, minHeight: 122, borderRadius: 19, borderWidth: 1, padding: 11, alignItems: 'center' },
+  statIcon: { width: 32, height: 32, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginBottom: 7 },
+  statValue: { fontSize: 19, lineHeight: 23, fontWeight: '800', letterSpacing: -0.35 },
+  statUnit: { fontSize: 10, lineHeight: 13, fontWeight: '700' },
+  statLabel: { fontSize: 11, lineHeight: 15, fontWeight: '600', marginTop: 4 },
+  progressCard: { borderWidth: 1, borderRadius: 20, padding: 14, gap: 13 },
+  progressTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  progressIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  progressCopy: { flex: 1 },
+  progressTitle: { fontSize: 15, fontWeight: '800' },
+  progressHint: { fontSize: 12, lineHeight: 17, fontWeight: '500', marginTop: 1 },
+  progressPercentage: { fontSize: 14, fontWeight: '800' },
+  progressTrack: { height: 8, borderRadius: 999, overflow: 'hidden' },
+  progressFill: { width: '72%', height: '100%', borderRadius: 999 },
+  sectionHeader: { gap: 2, marginTop: 1 },
+  sectionTitle: { fontSize: 19, fontWeight: '800', letterSpacing: -0.25 },
+  sectionHint: { fontSize: 12, fontWeight: '500' },
+  menuList: { gap: 9 },
+  menuItem: { minHeight: 72, borderWidth: 1, borderRadius: 19, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  menuIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  menuCopy: { flex: 1 },
+  menuTitle: { fontSize: 15, lineHeight: 20, fontWeight: '800' },
+  menuSubtitle: { fontSize: 12, lineHeight: 17, fontWeight: '500', marginTop: 1 },
+  logoutButton: { minHeight: 54, borderRadius: 17, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 2 },
+  logoutText: { color: '#D84045', fontSize: 14, fontWeight: '800' },
+  footer: { fontSize: 11, fontWeight: '500', textAlign: 'center', marginTop: 2 },
 });

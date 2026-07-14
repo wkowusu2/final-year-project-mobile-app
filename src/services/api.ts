@@ -10,9 +10,19 @@ import {
   VerifyOtpResponse,
 } from '@/src/types/driver';
 import { RoadBounds, RoadsResponse } from '@/src/types/map';
-import { GpsPoint } from '@/src/types/tracking';
+import { TrackingPoint, TrackingSession } from '@/src/types/tracking';
 
-type StartResponse = { success: true; sessionId: string };
+type TrackingSessionResponse = {
+  success: boolean;
+  data: { session: TrackingSession | null } | null;
+  error: string | null;
+};
+
+type TrackingPointsResponse = {
+  success: boolean;
+  data: { acceptedClientPointIds: string[]; duplicateCount: number } | null;
+  error: string | null;
+};
 
 type ApiError = Error & { status?: number };
 
@@ -21,9 +31,21 @@ type RequestOptions = RequestInit & {
   retryOnAuthFailure?: boolean;
 };
 
-async function parseResponse(response: Response) {
+async function parseResponse(response: Response): Promise<unknown> {
   const raw = await response.text();
-  return raw ? (JSON.parse(raw) as unknown) : null;
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    const contentType = response.headers.get('content-type') ?? 'an unknown content type';
+    const source = response.url || API_BASE_URL;
+    throw new Error(
+      `Expected a JSON API response from ${source}, but received ${contentType} (HTTP ${response.status}). Check API_BASE_URL and the backend route.`,
+    );
+  }
 }
 
 function getErrorMessage(data: unknown, status: number) {
@@ -36,21 +58,17 @@ function getErrorMessage(data: unknown, status: number) {
 
 async function refreshAuthTokens() {
   const [refreshToken, userId] = await Promise.all([storageService.getRefreshToken(), storageService.getUserId()]);
-  console.log('Fetched refresh credentials', { hasRefreshToken: Boolean(refreshToken), userId });
-
   if (!refreshToken || !userId) {
     await storageService.logout();
     throw new Error('Session expired');
   }
 
-  const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refreshToken, userId }),
   });
   const data = (await parseResponse(response)) as RefreshTokensResponse | null;
-  console.log('Refresh response received', { status: response.status, data });
-
   if (!response.ok || !data?.success || !data.data) {
     await storageService.logout();
     throw new Error(data?.error ?? 'Session expired');
@@ -157,36 +175,30 @@ export const api = {
 
     return response;
   },
-  startSession(driverId: string, startedAt: string) {
-    return request<StartResponse>('/tracking/sessions/start', {
+  startTrackingSession(startedAt: string) {
+    return request<TrackingSessionResponse>('/tracking/sessions', {
       method: 'POST',
       requiresAuth: true,
-      body: JSON.stringify({ driverId, startedAt }),
+      body: JSON.stringify({ startedAt }),
     });
   },
-  sendGpsBatch(driverId: string, sessionId: string, points: GpsPoint[]) {
-    return request<{ success: boolean }>('/tracking/gps-points/batch', {
-      method: 'POST',
+  getActiveTrackingSession() {
+    return request<TrackingSessionResponse>('/tracking/sessions/active', {
       requiresAuth: true,
-      body: JSON.stringify({
-        driverId,
-        sessionId,
-        points: points.map(({ latitude, longitude, speed, heading, accuracy, recordedAt }) => ({
-          latitude,
-          longitude,
-          speed,
-          heading,
-          accuracy,
-          recordedAt,
-        })),
-      }),
     });
   },
-  stopSession(sessionId: string, endedAt: string) {
-    return request<{ success: boolean }>('/tracking/sessions/stop', {
+  sendTrackingPoints(sessionId: string, points: TrackingPoint[]) {
+    return request<TrackingPointsResponse>(`/tracking/sessions/${sessionId}/points`, {
       method: 'POST',
       requiresAuth: true,
-      body: JSON.stringify({ sessionId, endedAt }),
+      body: JSON.stringify({ points }),
+    });
+  },
+  completeTrackingSession(sessionId: string, endedAt: string) {
+    return request<TrackingSessionResponse>(`/tracking/sessions/${sessionId}/complete`, {
+      method: 'POST',
+      requiresAuth: true,
+      body: JSON.stringify({ endedAt }),
     });
   },
 };

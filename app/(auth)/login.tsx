@@ -1,41 +1,48 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useState } from "react";
+import {
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
-import { api } from '@/src/services/api';
+import { api } from "@/src/services/api";
 
 function normalizePhone(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 10);
+  const digits = value.replace(/\D/g, "").slice(0, 10);
   if (!digits) {
-    return '';
+    return "";
   }
-  return digits.startsWith('0') ? digits : `0${digits.slice(0, 9)}`;
+  return digits.startsWith("0") ? digits : `0${digits.slice(0, 9)}`;
 }
 
 function formatGhanaPhone(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 10);
-  return digits.replace(/(\d{4})(\d{0,3})(\d{0,3})/, '$1 $2 $3').trim();
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  return digits.replace(/(\d{4})(\d{0,3})(\d{0,3})/, "$1 $2 $3").trim();
 }
 
 export default function LoginScreen() {
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isValid = phone.length === 10 && phone.startsWith('0');
+  const isValid = phone.length === 10 && phone.startsWith("0");
   const colors = {
-    background: '#FFFFFF',
-    heroText: '#1B1D35',
-    subtext: '#7C8194',
-    border: '#E4E7F0',
-    field: '#FFFFFF',
-    fieldMuted: '#F9FAFF',
-    label: '#50566B',
-    accent: '#5B21F0',
-    accentPressed: '#4B17D6',
-    buttonDisabled: '#D2D6E3',
-    buttonText: '#FFFFFF',
-    link: '#5B21F0',
+    background: "#FFFFFF",
+    heroText: "#1B1D35",
+    subtext: "#7C8194",
+    border: "#E4E7F0",
+    field: "#FFFFFF",
+    fieldMuted: "#F9FAFF",
+    label: "#50566B",
+    accent: "#5B21F0",
+    accentPressed: "#4B17D6",
+    buttonDisabled: "#D2D6E3",
+    buttonText: "#FFFFFF",
+    link: "#5B21F0",
   };
 
   async function continueToOtp() {
@@ -49,19 +56,30 @@ export default function LoginScreen() {
       const response = await api.sendOtp(phone);
 
       if (!response.success) {
-        Alert.alert('Unable to send OTP', response.error ?? 'Something went wrong.', [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Retry', onPress: () => void continueToOtp() },
-        ]);
+        Alert.alert(
+          "Unable to send OTP",
+          response.error ?? "Something went wrong.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Retry", onPress: () => void continueToOtp() },
+          ],
+        );
         return;
       }
 
-      router.push({ pathname: '/(auth)/otp', params: { phone, mode: 'login' } });
+      router.push({
+        pathname: "/(auth)/otp",
+        params: { phone, mode: "login" },
+      });
     } catch (error) {
-      Alert.alert('Unable to send OTP', error instanceof Error ? error.message : 'Something went wrong.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Retry', onPress: () => void continueToOtp() },
-      ]);
+      Alert.alert(
+        "Unable to send OTP",
+        error instanceof Error ? error.message : "Something went wrong.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Retry", onPress: () => void continueToOtp() },
+        ],
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -71,42 +89,84 @@ export default function LoginScreen() {
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <View style={styles.topIcon}>
         <View style={styles.topIconBase}>
-          <View style={[styles.topIconBlend, { backgroundColor: '#5B21F0' }]} />
-          <View style={[styles.topIconBlend, styles.topIconBlendRight, { backgroundColor: '#14B8A6' }]} />
+          <View style={[styles.topIconBlend, { backgroundColor: "#5B21F0" }]} />
+          <View
+            style={[
+              styles.topIconBlend,
+              styles.topIconBlendRight,
+              { backgroundColor: "#14B8A6" },
+            ]}
+          />
           <MaterialCommunityIcons color="#FFFFFF" name="home" size={28} />
         </View>
       </View>
 
       <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.heroText }]}>Welcome Back</Text>
-        <Text style={[styles.subtitle, { color: colors.subtext }]}>Enter your phone number to receive a one-time code</Text>
+        <Text style={[styles.title, { color: colors.heroText }]}>
+          Welcome Back
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.subtext }]}>
+          Enter your phone number to receive a one-time code
+        </Text>
       </View>
 
       <View style={styles.form}>
         <View style={styles.fieldGroup}>
-          <Text style={[styles.label, { color: colors.label }]}>Phone Number</Text>
+          <Text style={[styles.label, { color: colors.label }]}>
+            Phone Number
+          </Text>
           <View style={styles.phoneRow}>
-            <View style={[styles.countryChip, { borderColor: colors.border, backgroundColor: colors.fieldMuted }]}>
+            <View
+              style={[
+                styles.countryChip,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.fieldMuted,
+                },
+              ]}
+            >
               <Text style={styles.flag}>🇬🇭</Text>
-              <Text style={[styles.countryCode, { color: colors.heroText }]}>+233</Text>
+              <Text style={[styles.countryCode, { color: colors.heroText }]}>
+                +233
+              </Text>
             </View>
-            <View style={[styles.phoneInputWrap, { borderColor: colors.border, backgroundColor: colors.field }]}>
-              <MaterialCommunityIcons color={colors.subtext} name="phone-outline" size={18} />
+            <View
+              style={[
+                styles.phoneInputWrap,
+                { borderColor: colors.border, backgroundColor: colors.field },
+              ]}
+            >
+              <MaterialCommunityIcons
+                color={colors.subtext}
+                name="phone-outline"
+                size={18}
+              />
               <TextInput
                 value={formatGhanaPhone(phone)}
                 onChangeText={(value) => setPhone(normalizePhone(value))}
-                placeholder="9XX XXX XXXX"
+                placeholder="0XX XXX XXXX"
                 placeholderTextColor="#B0B5C7"
                 keyboardType="number-pad"
-                style={[styles.input, styles.phoneInput, { color: colors.heroText }]}
+                style={[
+                  styles.input,
+                  styles.phoneInput,
+                  { color: colors.heroText },
+                ]}
               />
             </View>
           </View>
         </View>
 
         <Text style={[styles.legalText, { color: colors.subtext }]}>
-          By continuing, you agree to our <Text style={[styles.link, { color: colors.link }]}>Terms of Service</Text> and{' '}
-          <Text style={[styles.link, { color: colors.link }]}>Privacy Policy</Text>. Standard message rates may apply.
+          By continuing, you agree to our{" "}
+          <Text style={[styles.link, { color: colors.link }]}>
+            Terms of Service
+          </Text>{" "}
+          and{" "}
+          <Text style={[styles.link, { color: colors.link }]}>
+            Privacy Policy
+          </Text>
+          . Standard message rates may apply.
         </Text>
 
         <Pressable
@@ -116,17 +176,33 @@ export default function LoginScreen() {
           style={({ pressed }) => [
             styles.primaryButton,
             {
-              backgroundColor: !isValid || isSubmitting ? colors.buttonDisabled : pressed ? colors.accentPressed : colors.accent,
+              backgroundColor:
+                !isValid || isSubmitting
+                  ? colors.buttonDisabled
+                  : pressed
+                    ? colors.accentPressed
+                    : colors.accent,
             },
-          ]}>
-          <Text style={styles.primaryButtonText}>{isSubmitting ? 'Sending...' : 'Send OTP'}</Text>
-          <MaterialCommunityIcons color="#FFFFFF" name="chevron-right" size={20} />
+          ]}
+        >
+          <Text style={styles.primaryButtonText}>
+            {isSubmitting ? "Sending..." : "Send OTP"}
+          </Text>
+          <MaterialCommunityIcons
+            color="#FFFFFF"
+            name="chevron-right"
+            size={20}
+          />
         </Pressable>
 
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.subtext }]}>Don&apos;t have an account? </Text>
-          <Pressable onPress={() => router.replace('/(auth)/signup')}>
-            <Text style={[styles.footerLink, { color: colors.link }]}>Register</Text>
+          <Text style={[styles.footerText, { color: colors.subtext }]}>
+            Don&apos;t have an account?{" "}
+          </Text>
+          <Pressable onPress={() => router.replace("/(auth)/signup")}>
+            <Text style={[styles.footerLink, { color: colors.link }]}>
+              Register
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -148,19 +224,19 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 14,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4F46E5',
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#4F46E5",
   },
   topIconBlend: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
+    position: "absolute",
+    width: "100%",
+    height: "100%",
     opacity: 0.95,
   },
   topIconBlendRight: {
-    left: '50%',
+    left: "50%",
   },
   content: {
     gap: 8,
@@ -169,7 +245,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     lineHeight: 32,
-    fontWeight: '900',
+    fontWeight: "900",
     letterSpacing: -0.4,
   },
   subtitle: {
@@ -186,10 +262,10 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   phoneRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
   },
   countryChip: {
@@ -198,9 +274,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 6,
   },
   flag: {
@@ -208,7 +284,7 @@ const styles = StyleSheet.create({
   },
   countryCode: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   phoneInputWrap: {
     flex: 1,
@@ -216,14 +292,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 16,
     paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   input: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   phoneInput: {
     letterSpacing: 0.2,
@@ -233,26 +309,26 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   link: {
-    fontWeight: '700',
+    fontWeight: "700",
   },
   primaryButton: {
     minHeight: 52,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
     gap: 6,
     marginTop: 2,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 2,
   },
   footerText: {
@@ -260,6 +336,6 @@ const styles = StyleSheet.create({
   },
   footerLink: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 });

@@ -27,6 +27,8 @@ export default function ReportsScreen() {
       return matchesFilter && matchesQuery;
     });
   }, [activeFilter, query]);
+  const verifiedCount = reportSummaries.filter((report) => report.status === 'Verified').length;
+  const resolvedCount = reportSummaries.filter((report) => report.status === 'Resolved').length;
 
   return (
     <ScrollView
@@ -34,8 +36,34 @@ export default function ReportsScreen() {
       contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.sm, paddingBottom: insets.bottom + 12 }]}
       showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.textPrimary }]}>My Reports</Text>
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>You&apos;ve submitted 6 reports</Text>
+        <View>
+          <Text style={[styles.eyebrow, { color: theme.textSecondary }]}>COMMUNITY CONTRIBUTIONS</Text>
+          <Text style={[styles.title, { color: theme.textPrimary }]}>Your reports</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Every report helps someone travel safer.</Text>
+        </View>
+        <Pressable
+          accessibilityLabel="Create a report"
+          accessibilityRole="button"
+          onPress={() => router.push('/report-incident')}
+          style={({ pressed }) => [styles.addButton, { backgroundColor: theme.primary, opacity: pressed ? 0.82 : 1 }]}>
+          <MaterialCommunityIcons color="#FFFFFF" name="plus" size={22} />
+        </Pressable>
+      </View>
+
+      <View style={styles.summaryCard}>
+        <View style={styles.summaryTopRow}>
+          <View>
+            <Text style={styles.summaryLabel}>TOTAL REPORTS</Text>
+            <Text style={styles.summaryValue}>{reportSummaries.length}</Text>
+          </View>
+          <View style={styles.summaryIcon}><MaterialCommunityIcons color="#FFFFFF" name="shield-check-outline" size={23} /></View>
+        </View>
+        <View style={styles.summaryDivider} />
+        <View style={styles.summaryStats}>
+          <View><Text style={styles.summaryStatValue}>{verifiedCount}</Text><Text style={styles.summaryStatLabel}>Verified</Text></View>
+          <View><Text style={styles.summaryStatValue}>{resolvedCount}</Text><Text style={styles.summaryStatLabel}>Resolved</Text></View>
+          <View><Text style={styles.summaryStatValue}>+12</Text><Text style={styles.summaryStatLabel}>Helpful votes</Text></View>
+        </View>
       </View>
 
       <View style={styles.searchRow}>
@@ -49,8 +77,12 @@ export default function ReportsScreen() {
             style={[styles.searchInput, { color: theme.textPrimary }]}
           />
         </View>
-        <Pressable style={[styles.filterButton, { backgroundColor: theme.surface, borderColor: theme.border }]} accessibilityRole="button">
-          <MaterialCommunityIcons color={theme.textSecondary} name="filter-variant" size={20} />
+        <Pressable
+          accessibilityLabel={query ? 'Clear report search' : 'Open report filters'}
+          accessibilityRole="button"
+          onPress={() => setQuery('')}
+          style={({ pressed }) => [styles.filterButton, { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.8 : 1 }]}>
+          <MaterialCommunityIcons color={theme.textSecondary} name={query ? 'close' : 'tune-variant'} size={20} />
         </Pressable>
       </View>
 
@@ -76,6 +108,10 @@ export default function ReportsScreen() {
         })}
       </View>
 
+      <View style={styles.listHeader}>
+        <Text style={[styles.listTitle, { color: theme.textPrimary }]}>{visibleReports.length === 1 ? '1 report' : `${visibleReports.length} reports`}</Text>
+        <Text style={[styles.listHint, { color: theme.textSecondary }]}>{activeFilter === 'All' ? 'Most recent first' : activeFilter}</Text>
+      </View>
       <View style={styles.list}>
         {visibleReports.map((report) => (
           <Pressable
@@ -86,6 +122,7 @@ export default function ReportsScreen() {
               styles.card,
               {
                 backgroundColor: theme.surface,
+                borderColor: theme.border,
                 opacity: pressed ? 0.96 : 1,
               },
             ]}>
@@ -117,6 +154,13 @@ export default function ReportsScreen() {
             <MaterialCommunityIcons color={theme.textMuted} name="chevron-right" size={18} />
           </Pressable>
         ))}
+        {visibleReports.length === 0 && (
+          <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={[styles.emptyIcon, { backgroundColor: theme.primarySoft }]}><MaterialCommunityIcons color={theme.primary} name="file-search-outline" size={24} /></View>
+            <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>No reports found</Text>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Try another search or select a different status.</Text>
+          </View>
+        )}
       </View>
     </ScrollView>
   );
@@ -133,31 +177,45 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 14,
-    gap: 12,
+    paddingHorizontal: 20,
+    gap: 16,
   },
   header: {
-    gap: 4,
-    paddingBottom: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
   },
+  eyebrow: { fontSize: 10, lineHeight: 14, fontWeight: '900', letterSpacing: 1, marginBottom: 3 },
   title: {
-    fontSize: 24,
-    lineHeight: 28,
-    fontWeight: '900',
-    letterSpacing: -0.3,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '800',
+    letterSpacing: -0.7,
   },
   subtitle: {
     fontSize: 13,
     lineHeight: 18,
+    fontWeight: '500',
   },
+  addButton: { height: 46, width: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  summaryCard: { backgroundColor: '#5420CD', borderRadius: 24, padding: 18 },
+  summaryTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  summaryLabel: { color: '#DCD0FF', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  summaryValue: { color: '#FFFFFF', fontSize: 38, lineHeight: 44, fontWeight: '800', letterSpacing: -1, marginTop: 2 },
+  summaryIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
+  summaryDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginVertical: 14 },
+  summaryStats: { flexDirection: 'row', justifyContent: 'space-between' },
+  summaryStatValue: { color: '#FFFFFF', fontSize: 15, lineHeight: 20, fontWeight: '800' },
+  summaryStatLabel: { color: '#DCD0FF', fontSize: 11, lineHeight: 16, fontWeight: '600' },
   searchRow: {
     flexDirection: 'row',
     gap: 8,
   },
   searchBox: {
     flex: 1,
-    minHeight: 42,
-    borderRadius: 14,
+    minHeight: 48,
+    borderRadius: 16,
     borderWidth: 1,
     paddingHorizontal: 12,
     flexDirection: 'row',
@@ -166,13 +224,13 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
   },
   filterButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -182,7 +240,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterPill: {
-    height: 32,
+    height: 36,
     paddingHorizontal: 14,
     borderRadius: 999,
     borderWidth: 1,
@@ -191,15 +249,18 @@ const styles = StyleSheet.create({
   },
   filterText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
+  listHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
+  listTitle: { fontSize: 16, fontWeight: '800' },
+  listHint: { fontSize: 12, fontWeight: '600' },
   list: {
     gap: 10,
-    paddingTop: 4,
   },
   card: {
-    minHeight: 92,
-    borderRadius: 18,
+    minHeight: 96,
+    borderRadius: 20,
+    borderWidth: 1,
     paddingVertical: 14,
     paddingHorizontal: 12,
     flexDirection: 'row',
@@ -207,8 +268,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconWrap: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -247,4 +308,8 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: '500',
   },
+  emptyState: { minHeight: 190, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  emptyIcon: { width: 50, height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  emptyTitle: { fontSize: 16, fontWeight: '800' },
+  emptyText: { fontSize: 13, lineHeight: 19, fontWeight: '500', textAlign: 'center', marginTop: 4 },
 });

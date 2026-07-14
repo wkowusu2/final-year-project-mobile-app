@@ -1,29 +1,29 @@
 export type GpsStatus = 'Good' | 'Weak' | 'Unavailable';
 
-export type GpsPoint = {
-  id: string;
-  driverId: string;
-  sessionId: string;
+export type TrackingPoint = {
+  clientPointId: string;
   latitude: number;
   longitude: number;
-  speed: number | null;
-  heading: number | null;
-  accuracy: number | null;
+  speedMps: number | null;
+  headingDegrees: number | null;
+  accuracyMeters: number | null;
   recordedAt: string;
 };
 
 export type TrackingSession = {
-  sessionId: string;
+  id: string;
+  status: 'active' | 'completed' | 'cancelled';
   startedAt: string;
-  endedAt?: string;
+  endedAt: string | null;
 };
 
-export type TrackingSummary = {
-  sessionId: string;
-  startedAt: string;
-  endedAt: string;
-  durationSeconds: number;
-  pointsCollected: number;
-  pointsSynced: number;
-  unsyncedPoints: number;
+export type TrackingLifecycle = 'active' | 'pausedOffline' | 'stopPending';
+
+export type ActiveTrackingState = {
+  session: TrackingSession;
+  lifecycle: TrackingLifecycle;
+  route: { latitude: number; longitude: number }[];
+  latestPoint: TrackingPoint | null;
+  distanceMeters: number;
+  outbox: TrackingPoint[];
 };

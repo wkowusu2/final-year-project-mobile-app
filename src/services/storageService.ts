@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 
 import { AuthTokens, DriverProfile } from '@/src/types/driver';
-import { GpsPoint, TrackingSummary } from '@/src/types/tracking';
+import { ActiveTrackingState } from '@/src/types/tracking';
 
 const KEYS = {
   driver: 'roadpulse.driver',
@@ -15,6 +15,7 @@ const KEYS = {
   hasProfile: 'roadpulse.hasProfile',
   fullName: 'roadpulse.fullName',
   doneOnBoarding: 'roadpulse.doneOnBoarding',
+  activeTracking: 'roadpulse.activeTracking',
 };
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -84,31 +85,14 @@ export const storageService = {
   clearDoneOnBoarding() {
     return AsyncStorage.removeItem(KEYS.doneOnBoarding);
   },
-  getPendingPoints() {
-    return readJson<GpsPoint[]>(KEYS.pendingPoints, []);
+  saveActiveTracking(state: ActiveTrackingState) {
+    return AsyncStorage.setItem(KEYS.activeTracking, JSON.stringify(state));
   },
-  async appendPendingPoints(points: GpsPoint[]) {
-    const existing = await this.getPendingPoints();
-    await AsyncStorage.setItem(KEYS.pendingPoints, JSON.stringify([...existing, ...points]));
+  getActiveTracking() {
+    return readJson<ActiveTrackingState | null>(KEYS.activeTracking, null);
   },
-  savePendingPoints(points: GpsPoint[]) {
-    return AsyncStorage.setItem(KEYS.pendingPoints, JSON.stringify(points));
-  },
-  async removePendingPoints(ids: string[]) {
-    const existing = await this.getPendingPoints();
-    await this.savePendingPoints(existing.filter((point) => !ids.includes(point.id)));
-  },
-  saveLastSyncAt(value: string) {
-    return AsyncStorage.setItem(KEYS.lastSyncAt, value);
-  },
-  getLastSyncAt() {
-    return AsyncStorage.getItem(KEYS.lastSyncAt);
-  },
-  saveSummary(summary: TrackingSummary) {
-    return AsyncStorage.setItem(KEYS.summary, JSON.stringify(summary));
-  },
-  getSummary() {
-    return readJson<TrackingSummary | null>(KEYS.summary, null);
+  clearActiveTracking() {
+    return AsyncStorage.removeItem(KEYS.activeTracking);
   },
   async logout() {
     await AsyncStorage.multiRemove([
@@ -116,6 +100,7 @@ export const storageService = {
       KEYS.pendingPoints,
       KEYS.lastSyncAt,
       KEYS.summary,
+      KEYS.activeTracking,
       KEYS.userId,
       KEYS.hasProfile,
       KEYS.fullName,

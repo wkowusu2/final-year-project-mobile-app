@@ -1,49 +1,64 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { router, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
+import {
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
-import { api } from '@/src/services/api';
-import { storageService } from '@/src/services/storageService';
+import { api } from "@/src/services/api";
+import { storageService } from "@/src/services/storageService";
 
 function normalizePhone(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 10);
+  const digits = value.replace(/\D/g, "").slice(0, 10);
   if (!digits) {
-    return '';
+    return "";
   }
-  return digits.startsWith('0') ? digits : `0${digits.slice(0, 9)}`;
+  return digits.startsWith("0") ? digits : `0${digits.slice(0, 9)}`;
 }
 
 function formatGhanaPhone(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 10);
-  return digits.length > 4 ? digits.replace(/(\d{4})(\d{0,3})(\d{0,3})/, '$1 $2 $3').trim() : digits;
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  return digits.length > 4
+    ? digits.replace(/(\d{4})(\d{0,3})(\d{0,3})/, "$1 $2 $3").trim()
+    : digits;
 }
 
 export default function SignUpScreen() {
   const params = useLocalSearchParams<{ phone?: string }>();
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState(typeof params.phone === 'string' ? params.phone : '');
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState(
+    typeof params.phone === "string" ? params.phone : "",
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const hasValidEmail = email.length === 0 || email.includes('@');
-  const isValid = fullName.trim().length > 1 && hasValidEmail && phone.length === 10 && phone.startsWith('0');
+  const hasValidEmail = email.length === 0 || email.includes("@");
+  const isValid =
+    fullName.trim().length > 1 &&
+    hasValidEmail &&
+    phone.length === 10 &&
+    phone.startsWith("0");
   const colors = {
-    background: '#FFFFFF',
-    heroText: '#1B1D35',
-    subtext: '#7C8194',
-    border: '#E4E7F0',
-    field: '#FFFFFF',
-    fieldMuted: '#F9FAFF',
-    label: '#50566B',
-    accent: '#5B21F0',
-    accentPressed: '#4B17D6',
-    buttonDisabled: '#D2D6E3',
-    buttonText: '#FFFFFF',
-    link: '#5B21F0',
-    card: '#FFFFFF',
-    iconA: '#5B21F0',
-    iconB: '#14B8A6',
+    background: "#FFFFFF",
+    heroText: "#1B1D35",
+    subtext: "#7C8194",
+    border: "#E4E7F0",
+    field: "#FFFFFF",
+    fieldMuted: "#F9FAFF",
+    label: "#50566B",
+    accent: "#5B21F0",
+    accentPressed: "#4B17D6",
+    buttonDisabled: "#D2D6E3",
+    buttonText: "#FFFFFF",
+    link: "#5B21F0",
+    card: "#FFFFFF",
+    iconA: "#5B21F0",
+    iconB: "#14B8A6",
   };
 
   async function continueToOtp() {
@@ -54,19 +69,21 @@ export default function SignUpScreen() {
     setIsSubmitting(true);
 
     try {
-      const response = await api.registerDriver(
-        {
-          phone,
-          fullName: fullName.trim(),
-          ...(email.trim() ? { email: email.trim() } : {}),
-        },
-      );
+      const response = await api.registerDriver({
+        phone,
+        fullName: fullName.trim(),
+        ...(email.trim() ? { email: email.trim() } : {}),
+      });
 
       if (!response.success || !response.data) {
-        Alert.alert('Unable to complete registration', response.error ?? 'Something went wrong.', [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Retry', onPress: () => void continueToOtp() },
-        ]);
+        Alert.alert(
+          "Unable to complete registration",
+          response.error ?? "Something went wrong.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Retry", onPress: () => void continueToOtp() },
+          ],
+        );
         return;
       }
 
@@ -75,16 +92,20 @@ export default function SignUpScreen() {
       await storageService.saveFullName(response.data.fullName);
 
       if (!response.data.doneOnBoarding) {
-        router.replace('/(auth)/onboarding');
+        router.replace("/(auth)/onboarding");
         return;
       }
 
-      router.replace('/(auth)/permissions');
+      router.replace("/(auth)/permissions");
     } catch (error) {
-      Alert.alert('Unable to complete registration', error instanceof Error ? error.message : 'Something went wrong.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Retry', onPress: () => void continueToOtp() },
-      ]);
+      Alert.alert(
+        "Unable to complete registration",
+        error instanceof Error ? error.message : "Something went wrong.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Retry", onPress: () => void continueToOtp() },
+        ],
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -94,22 +115,43 @@ export default function SignUpScreen() {
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <View style={styles.topIcon}>
         <View style={styles.topIconBase}>
-          <View style={[styles.topIconBlend, { backgroundColor: colors.iconA }]} />
-          <View style={[styles.topIconBlend, styles.topIconBlendRight, { backgroundColor: colors.iconB }]} />
+          <View
+            style={[styles.topIconBlend, { backgroundColor: colors.iconA }]}
+          />
+          <View
+            style={[
+              styles.topIconBlend,
+              styles.topIconBlendRight,
+              { backgroundColor: colors.iconB },
+            ]}
+          />
           <MaterialCommunityIcons color="#FFFFFF" name="home" size={28} />
         </View>
       </View>
 
       <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.heroText }]}>Complete Registration</Text>
-        <Text style={[styles.subtitle, { color: colors.subtext }]}>Finish setting up your driver profile to continue</Text>
+        <Text style={[styles.title, { color: colors.heroText }]}>
+          Complete Registration
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.subtext }]}>
+          Finish setting up your driver profile to continue
+        </Text>
       </View>
 
       <View style={styles.form}>
         <View style={styles.fieldGroup}>
           <Text style={[styles.label, { color: colors.label }]}>Full Name</Text>
-          <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.field }]}>
-            <MaterialCommunityIcons color={colors.subtext} name="account-outline" size={18} />
+          <View
+            style={[
+              styles.inputWrap,
+              { borderColor: colors.border, backgroundColor: colors.field },
+            ]}
+          >
+            <MaterialCommunityIcons
+              color={colors.subtext}
+              name="account-outline"
+              size={18}
+            />
             <TextInput
               value={fullName}
               onChangeText={setFullName}
@@ -122,9 +164,20 @@ export default function SignUpScreen() {
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={[styles.label, { color: colors.label }]}>Email Address</Text>
-          <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.field }]}>
-            <MaterialCommunityIcons color={colors.subtext} name="email-outline" size={18} />
+          <Text style={[styles.label, { color: colors.label }]}>
+            Email Address
+          </Text>
+          <View
+            style={[
+              styles.inputWrap,
+              { borderColor: colors.border, backgroundColor: colors.field },
+            ]}
+          >
+            <MaterialCommunityIcons
+              color={colors.subtext}
+              name="email-outline"
+              size={18}
+            />
             <TextInput
               value={email}
               onChangeText={setEmail}
@@ -138,30 +191,63 @@ export default function SignUpScreen() {
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={[styles.label, { color: colors.label }]}>Phone Number</Text>
+          <Text style={[styles.label, { color: colors.label }]}>
+            Phone Number
+          </Text>
           <View style={styles.phoneRow}>
-            <View style={[styles.countryChip, { borderColor: colors.border, backgroundColor: colors.fieldMuted }]}>
+            <View
+              style={[
+                styles.countryChip,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.fieldMuted,
+                },
+              ]}
+            >
               <Text style={styles.flag}>🇬🇭</Text>
-              <Text style={[styles.countryCode, { color: colors.heroText }]}>+233</Text>
+              <Text style={[styles.countryCode, { color: colors.heroText }]}>
+                +233
+              </Text>
             </View>
-            <View style={[styles.phoneInputWrap, { borderColor: colors.border, backgroundColor: colors.field }]}>
-              <MaterialCommunityIcons color={colors.subtext} name="phone-outline" size={18} />
+            <View
+              style={[
+                styles.phoneInputWrap,
+                { borderColor: colors.border, backgroundColor: colors.field },
+              ]}
+            >
+              <MaterialCommunityIcons
+                color={colors.subtext}
+                name="phone-outline"
+                size={18}
+              />
               <TextInput
                 value={formatGhanaPhone(phone)}
                 onChangeText={(value) => setPhone(normalizePhone(value))}
-                placeholder="9XX XXX XXXX"
+                placeholder="0XX XXX XXXX"
                 placeholderTextColor="#B0B5C7"
                 keyboardType="number-pad"
-                style={[styles.input, styles.phoneInput, { color: colors.heroText }]}
+                style={[
+                  styles.input,
+                  styles.phoneInput,
+                  { color: colors.heroText },
+                ]}
               />
             </View>
           </View>
-          <Text style={[styles.helperText, { color: colors.subtext }]}>This will be saved as your driver phone number</Text>
+          <Text style={[styles.helperText, { color: colors.subtext }]}>
+            This will be saved as your driver phone number
+          </Text>
         </View>
 
         <Text style={[styles.legalText, { color: colors.subtext }]}>
-          By continuing, you agree to our <Text style={[styles.link, { color: colors.link }]}>Terms of Service</Text> and{' '}
-          <Text style={[styles.link, { color: colors.link }]}>Privacy Policy</Text>
+          By continuing, you agree to our{" "}
+          <Text style={[styles.link, { color: colors.link }]}>
+            Terms of Service
+          </Text>{" "}
+          and{" "}
+          <Text style={[styles.link, { color: colors.link }]}>
+            Privacy Policy
+          </Text>
         </Text>
 
         <Pressable
@@ -171,17 +257,33 @@ export default function SignUpScreen() {
           style={({ pressed }) => [
             styles.primaryButton,
             {
-              backgroundColor: !isValid || isSubmitting ? colors.buttonDisabled : pressed ? colors.accentPressed : colors.accent,
+              backgroundColor:
+                !isValid || isSubmitting
+                  ? colors.buttonDisabled
+                  : pressed
+                    ? colors.accentPressed
+                    : colors.accent,
             },
-          ]}>
-          <Text style={styles.primaryButtonText}>{isSubmitting ? 'Saving...' : 'Continue'}</Text>
-          <MaterialCommunityIcons color="#FFFFFF" name="chevron-right" size={20} />
+          ]}
+        >
+          <Text style={styles.primaryButtonText}>
+            {isSubmitting ? "Saving..." : "Continue"}
+          </Text>
+          <MaterialCommunityIcons
+            color="#FFFFFF"
+            name="chevron-right"
+            size={20}
+          />
         </Pressable>
 
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.subtext }]}>Already verified? </Text>
-          <Pressable onPress={() => router.replace('/(auth)/login')}>
-            <Text style={[styles.footerLink, { color: colors.link }]}>Back to login</Text>
+          <Text style={[styles.footerText, { color: colors.subtext }]}>
+            Already verified?{" "}
+          </Text>
+          <Pressable onPress={() => router.replace("/(auth)/login")}>
+            <Text style={[styles.footerLink, { color: colors.link }]}>
+              Back to login
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -203,19 +305,19 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 14,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4F46E5',
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#4F46E5",
   },
   topIconBlend: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
+    position: "absolute",
+    width: "100%",
+    height: "100%",
     opacity: 0.95,
   },
   topIconBlendRight: {
-    left: '50%',
+    left: "50%",
   },
   content: {
     gap: 8,
@@ -224,7 +326,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 27,
     lineHeight: 31,
-    fontWeight: '900',
+    fontWeight: "900",
     letterSpacing: -0.4,
   },
   subtitle: {
@@ -241,24 +343,24 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   inputWrap: {
     minHeight: 52,
     borderWidth: 1,
     borderRadius: 16,
     paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   input: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   phoneRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
   },
   countryChip: {
@@ -267,9 +369,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 6,
   },
   flag: {
@@ -277,7 +379,7 @@ const styles = StyleSheet.create({
   },
   countryCode: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   phoneInputWrap: {
     flex: 1,
@@ -285,8 +387,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 16,
     paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   phoneInput: {
@@ -301,26 +403,26 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   link: {
-    fontWeight: '700',
+    fontWeight: "700",
   },
   primaryButton: {
     minHeight: 52,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
     gap: 6,
     marginTop: 2,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 2,
   },
   footerText: {
@@ -328,6 +430,6 @@ const styles = StyleSheet.create({
   },
   footerLink: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 });
