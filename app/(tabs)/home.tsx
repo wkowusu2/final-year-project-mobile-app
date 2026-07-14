@@ -184,8 +184,8 @@ export default function HomeScreen() {
         </View>
         <Text style={styles.tripTitle}>
           {trackingActive
-            ? "Your drive is{`\n`}making roads better."
-            : "Turn today’s drive{`\n`}into better roads."}
+            ? 'Your drive is\nmaking roads better.'
+            : 'Turn today’s drive\ninto better roads.'}
         </Text>
         <Text style={styles.tripDescription}>
           {trackingActive && dashboard?.metrics.currentSpeedMps != null
