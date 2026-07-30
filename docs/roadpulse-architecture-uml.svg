@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900" role="img" aria-labelledby="title description">
+  <title id="title">RoadPulse Ghana Driver App — UML Component Diagram</title>
+  <desc id="description">A high-level component diagram showing app routing, screens, services, device APIs, backend API, and PostgreSQL data storage.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,4 L0,8 z" fill="#64748B"/>
+    </marker>
+    <style>
+      .page { fill: #F8FAFC; }
+      .title { font: 800 30px Arial, sans-serif; fill: #0F172A; }
+      .subtitle { font: 400 15px Arial, sans-serif; fill: #64748B; }
+      .lane { font: 800 12px Arial, sans-serif; letter-spacing: 1.8px; fill: #64748B; }
+      .box { stroke-width: 1.5; rx: 16; ry: 16; }
+      .component { font: 800 17px Arial, sans-serif; fill: #0F172A; }
+      .body { font: 400 13px Arial, sans-serif; fill: #475569; }
+      .stereotype { font: 700 11px Arial, sans-serif; fill: #2563EB; }
+      .connector { fill: none; stroke: #64748B; stroke-width: 1.8; marker-end: url(#arrow); }
+      .connector-label { font: 600 11px Arial, sans-serif; fill: #64748B; }
+      .divider { stroke: #E2E8F0; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect class="page" width="1400" height="900"/>
+  <text class="title" x="70" y="65">RoadPulse Ghana — Driver App Architecture</text>
+  <text class="subtitle" x="70" y="92">High-level UML component diagram · Expo React Native client and Node/Express backend</text>
+
+  <text class="lane" x="70" y="144">PRESENTATION &amp; NAVIGATION</text>
+  <line class="divider" x1="70" y1="158" x2="1330" y2="158"/>
+
+  <rect class="box" x="70" y="185" width="260" height="135" fill="#EAF2FF" stroke="#93C5FD"/>
+  <text class="stereotype" x="92" y="213">&lt;&lt;ROUTER&gt;&gt;</text>
+  <text class="component" x="92" y="240">Expo Router</text>
+  <text class="body" x="92" y="267">Root stack · Auth stack</text>
+  <text class="body" x="92" y="288">Five-tab navigation</text>
+
+  <rect class="box" x="410" y="185" width="405" height="135" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text class="stereotype" x="432" y="213">&lt;&lt;SCREENS&gt;&gt;</text>
+  <text class="component" x="432" y="240">Driver Experience</text>
+  <text class="body" x="432" y="267">Home · Live Map · Reports · Insights · Profile</text>
+  <text class="body" x="432" y="288">Tracking · Incidents · Notifications · Settings</text>
+
+  <rect class="box" x="895" y="185" width="365" height="135" fill="#F0FDFA" stroke="#99F6E4"/>
+  <text class="stereotype" x="917" y="213">&lt;&lt;PRESENTATION STATE&gt;&gt;</text>
+  <text class="component" x="917" y="240">Theme Provider</text>
+  <text class="body" x="917" y="267">System · Light · Dark preference</text>
+  <text class="body" x="917" y="288">Persistent app-wide appearance</text>
+
+  <path class="connector" d="M330 252 H410"/>
+  <path class="connector" d="M815 252 H895"/>
+
+  <text class="lane" x="70" y="385">APPLICATION SERVICES</text>
+  <line class="divider" x1="70" y1="399" x2="1330" y2="399"/>
+
+  <rect class="box" x="70" y="428" width="280" height="165" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text class="stereotype" x="92" y="456">&lt;&lt;SERVICE&gt;&gt;</text>
+  <text class="component" x="92" y="483">API Service</text>
+  <text class="body" x="92" y="510">OTP authentication &amp; token refresh</text>
+  <text class="body" x="92" y="531">Dashboard · incidents · roads</text>
+  <text class="body" x="92" y="552">Tracking sessions &amp; GPS uploads</text>
+
+  <rect class="box" x="410" y="428" width="280" height="165" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text class="stereotype" x="432" y="456">&lt;&lt;HOOK&gt;&gt;</text>
+  <text class="component" x="432" y="483">Location Tracking</text>
+  <text class="body" x="432" y="510">Start · resume · stop lifecycle</text>
+  <text class="body" x="432" y="531">Noise filtering &amp; distance calculation</text>
+  <text class="body" x="432" y="552">Foreground GPS collection</text>
+
+  <rect class="box" x="750" y="428" width="240" height="165" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text class="stereotype" x="772" y="456">&lt;&lt;SERVICE&gt;&gt;</text>
+  <text class="component" x="772" y="483">Location Service</text>
+  <text class="body" x="772" y="510">Cached &amp; live locations</text>
+  <text class="body" x="772" y="531">Reverse geocoding</text>
+  <text class="body" x="772" y="552">GPS point conversion</text>
+
+  <rect class="box" x="1050" y="428" width="210" height="165" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text class="stereotype" x="1072" y="456">&lt;&lt;SERVICE&gt;&gt;</text>
+  <text class="component" x="1072" y="483">Storage Service</text>
+  <text class="body" x="1072" y="510">Secure access tokens</text>
+  <text class="body" x="1072" y="531">Profile &amp; theme state</text>
+  <text class="body" x="1072" y="552">Active tracking state</text>
+
+  <path class="connector" d="M580 320 V428"/>
+  <path class="connector" d="M620 320 V390 H210 V428"/>
+  <path class="connector" d="M620 320 V390 H870 V428"/>
+  <path class="connector" d="M1078 320 V428"/>
+  <path class="connector" d="M350 510 H410"/>
+  <path class="connector" d="M690 510 H750"/>
+  <path class="connector" d="M990 510 H1050"/>
+
+  <text class="lane" x="70" y="660">PLATFORM &amp; BACKEND</text>
+  <line class="divider" x1="70" y1="674" x2="1330" y2="674"/>
+
+  <rect class="box" x="70" y="704" width="300" height="142" fill="#F5F3FF" stroke="#C4B5FD"/>
+  <text class="stereotype" x="92" y="732">&lt;&lt;EXPO / DEVICE APIS&gt;&gt;</text>
+  <text class="component" x="92" y="759">Mobile Platform Services</text>
+  <text class="body" x="92" y="786">expo-location · secure-store · AsyncStorage</text>
+  <text class="body" x="92" y="807">NetInfo · image-picker · native maps</text>
+
+  <rect class="box" x="500" y="704" width="330" height="142" fill="#EFF6FF" stroke="#93C5FD"/>
+  <text class="stereotype" x="522" y="732">&lt;&lt;REST API&gt;&gt;</text>
+  <text class="component" x="522" y="759">Node / Express Backend</text>
+  <text class="body" x="522" y="786">Auth · driver profile · incidents · maps</text>
+  <text class="body" x="522" y="807">Tracking sessions · GPS points · rewards</text>
+
+  <rect class="box" x="960" y="704" width="300" height="142" fill="#ECFDF5" stroke="#86EFAC"/>
+  <text class="stereotype" x="982" y="732">&lt;&lt;DATABASE&gt;&gt;</text>
+  <text class="component" x="982" y="759">PostgreSQL + PostGIS</text>
+  <text class="body" x="982" y="786">Users · refresh tokens · driver profiles</text>
+  <text class="body" x="982" y="807">Sessions · GPS points · incidents · roads</text>
+
+  <path class="connector" d="M890 593 V646 H220 V704"/>
+  <path class="connector" d="M1155 593 V646 H220 V704"/>
+  <path class="connector" d="M210 593 V646 H665 V704"/>
+  <path class="connector" d="M350 510 H470 V646 H665 V704"/>
+  <path class="connector" d="M830 775 H960"/>
+
+  <text class="connector-label" x="401" y="639">HTTPS + bearer token</text>
+  <text class="connector-label" x="844" y="766">Drizzle / SQL</text>
+
+  <text class="subtitle" x="70" y="880">Generated for RoadPulse Ghana · Component view · Print in landscape for best results</text>
+</svg>

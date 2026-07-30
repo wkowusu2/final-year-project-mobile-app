@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1540" viewBox="0 0 1500 1540" role="img" aria-labelledby="title description">
+  <title id="title">RoadPulse Ghana — Core User Flows Sequence Diagram</title>
+  <desc id="description">A sequence diagram showing authentication, journey tracking, and incident reporting between the driver, mobile app, device services, backend, and external services.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 z" fill="#475569"/></marker>
+    <marker id="open-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8" fill="none" stroke="#64748B" stroke-width="1.5"/></marker>
+    <style>
+      .page{fill:#F8FAFC}.title{font:800 30px Arial,sans-serif;fill:#0F172A}.subtitle{font:400 15px Arial,sans-serif;fill:#64748B}.actor{fill:#FFF;stroke:#94A3B8;stroke-width:1.5;rx:14;ry:14}.actor-title{font:800 13px Arial,sans-serif;fill:#0F172A}.lifeline{stroke:#CBD5E1;stroke-width:1.2;stroke-dasharray:6 6}.message{fill:none;stroke:#475569;stroke-width:1.7;marker-end:url(#arrow)}.return{fill:none;stroke:#64748B;stroke-width:1.35;stroke-dasharray:5 4;marker-end:url(#open-arrow)}.text{font:600 12px Arial,sans-serif;fill:#334155}.phase{fill:#EFF6FF;stroke:#BFDBFE;stroke-width:1;rx:10;ry:10}.phase-text{font:800 11px Arial,sans-serif;letter-spacing:1px;fill:#2563EB}.note{fill:#FFFBEB;stroke:#FCD34D;stroke-width:1;rx:10;ry:10}.note-text{font:500 11px Arial,sans-serif;fill:#854D0E}.alt{fill:none;stroke:#CBD5E1;stroke-width:1.2;stroke-dasharray:5 4;rx:12;ry:12}.alt-label{font:800 11px Arial,sans-serif;fill:#64748B}
+    </style>
+  </defs>
+  <rect class="page" width="1500" height="1540"/>
+  <text class="title" x="55" y="55">RoadPulse Ghana — Core User Flows</text>
+  <text class="subtitle" x="55" y="82">Sequence diagram: OTP authentication, foreground journey tracking, and incident reporting</text>
+
+  <rect class="actor" x="55" y="115" width="130" height="48"/><text class="actor-title" x="91" y="145">Driver</text>
+  <rect class="actor" x="260" y="115" width="160" height="48"/><text class="actor-title" x="292" y="145">Mobile App</text>
+  <rect class="actor" x="495" y="115" width="160" height="48"/><text class="actor-title" x="522" y="145">Device APIs</text>
+  <rect class="actor" x="730" y="115" width="160" height="48"/><text class="actor-title" x="753" y="145">Backend API</text>
+  <rect class="actor" x="965" y="115" width="160" height="48"/><text class="actor-title" x="1004" y="145">Database</text>
+  <rect class="actor" x="1200" y="115" width="210" height="48"/><text class="actor-title" x="1224" y="145">External Services</text>
+  <line class="lifeline" x1="120" y1="163" x2="120" y2="1490"/><line class="lifeline" x1="340" y1="163" x2="340" y2="1490"/><line class="lifeline" x1="575" y1="163" x2="575" y2="1490"/><line class="lifeline" x1="810" y1="163" x2="810" y2="1490"/><line class="lifeline" x1="1045" y1="163" x2="1045" y2="1490"/><line class="lifeline" x1="1305" y1="163" x2="1305" y2="1490"/>
+
+  <rect class="phase" x="55" y="195" width="1355" height="30"/><text class="phase-text" x="75" y="216">1 · OTP AUTHENTICATION &amp; SESSION ESTABLISHMENT</text>
+  <path class="message" d="M120 260 H340"/><text class="text" x="177" y="252">Enter phone number</text>
+  <path class="message" d="M340 290 H810"/><text class="text" x="493" y="282">POST /auth/send-otp</text>
+  <path class="message" d="M810 320 H1305"/><text class="text" x="1006" y="312">Send OTP via SMS provider</text>
+  <path class="message" d="M1305 350 H120"/><text class="text" x="590" y="342">Deliver one-time passcode by SMS</text>
+  <path class="message" d="M120 385 H340"/><text class="text" x="178" y="377">Enter OTP</text>
+  <path class="message" d="M340 415 H810"/><text class="text" x="481" y="407">POST /auth/verify-otp</text>
+  <path class="message" d="M810 445 H1045"/><text class="text" x="859" y="437">Validate OTP / user</text>
+  <path class="return" d="M1045 475 H810"/><text class="text" x="870" y="467">User, role, profile status</text>
+  <path class="return" d="M810 505 H340"/><text class="text" x="474" y="497">Access token + refresh token</text>
+  <path class="message" d="M340 535 H575"/><text class="text" x="380" y="527">Store secure tokens &amp; profile state</text>
+  <path class="return" d="M575 565 H340"/><text class="text" x="407" y="557">Stored</text>
+  <rect class="note" x="700" y="585" width="420" height="42"/><text class="note-text" x="718" y="603">Access tokens expire after 15 minutes. The app uses one shared</text><text class="note-text" x="718" y="619">refresh request to avoid concurrent refresh-token collisions.</text>
+
+  <rect class="phase" x="55" y="665" width="1355" height="30"/><text class="phase-text" x="75" y="686">2 · FOREGROUND JOURNEY TRACKING</text>
+  <path class="message" d="M120 730 H340"/><text class="text" x="174" y="722">Tap “Start tracking”</text>
+  <path class="message" d="M340 760 H575"/><text class="text" x="382" y="752">Request high-accuracy location</text>
+  <path class="return" d="M575 790 H340"/><text class="text" x="405" y="782">Initial GPS fix</text>
+  <path class="message" d="M340 820 H810"/><text class="text" x="476" y="812">POST /tracking/sessions</text>
+  <path class="message" d="M810 850 H1045"/><text class="text" x="871" y="842">Create / fetch active session</text>
+  <path class="return" d="M1045 880 H810"/><text class="text" x="874" y="872">Session ID</text>
+  <path class="return" d="M810 910 H340"/><text class="text" x="496" y="902">Tracking session active</text>
+  <path class="message" d="M340 940 H575"/><text class="text" x="380" y="932">Watch foreground GPS updates</text>
+  <rect class="alt" x="310" y="968" width="770" height="112"/><text class="alt-label" x="328" y="987">loop · GPS update emitted by the platform (time / distance constraints apply)</text>
+  <path class="return" d="M575 1015 H340"/><text class="text" x="384" y="1007">Coordinates, speed, heading, accuracy</text>
+  <path class="message" d="M340 1045 H810"/><text class="text" x="432" y="1037">Filter drift; update distance/route; POST points</text>
+  <path class="message" d="M810 1070 H1045"/><text class="text" x="861" y="1062">Persist accepted GPS points</text>
+  <path class="return" d="M1045 1098 H340"/><text class="text" x="605" y="1090">Accepted client point IDs</text>
+  <rect class="note" x="1135" y="980" width="250" height="81"/><text class="note-text" x="1150" y="1000">Tracking accepts fixes</text><text class="note-text" x="1150" y="1017">with ≤30m accuracy and</text><text class="note-text" x="1150" y="1034">filters stationary drift.</text>
+  <path class="message" d="M120 1135 H340"/><text class="text" x="178" y="1127">Tap “Stop tracking”</text>
+  <path class="message" d="M340 1165 H810"/><text class="text" x="438" y="1157">Flush outbox; POST /tracking/sessions/:id/complete</text>
+  <path class="message" d="M810 1195 H1045"/><text class="text" x="858" y="1187">Complete session</text>
+  <path class="return" d="M1045 1225 H340"/><text class="text" x="608" y="1217">Completed session; clear local active state</text>
+
+  <rect class="phase" x="55" y="1265" width="1355" height="30"/><text class="phase-text" x="75" y="1286">3 · INCIDENT REPORTING</text>
+  <path class="message" d="M120 1330 H340"/><text class="text" x="158" y="1322">Choose incident type, severity, description, photo</text>
+  <path class="message" d="M340 1360 H575"/><text class="text" x="390" y="1352">Get location + reverse geocode</text>
+  <path class="return" d="M575 1390 H340"/><text class="text" x="395" y="1382">Road name, city, coordinates</text>
+  <path class="message" d="M340 1420 H810"/><text class="text" x="470" y="1412">POST /incidents (multipart + bearer token)</text>
+  <path class="message" d="M810 1450 H1045"/><text class="text" x="862" y="1442">Store incident record</text>
+  <path class="message" d="M810 1480 H1305"/><text class="text" x="991" y="1472">Upload optional incident photo</text>
+  <path class="return" d="M1305 1510 H340"/><text class="text" x="734" y="1502">Created incident; return to Home</text>
+</svg>

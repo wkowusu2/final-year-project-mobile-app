@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1120" viewBox="0 0 1400 1120" role="img" aria-labelledby="title description">
+  <title id="title">RoadPulse Ghana — Driver Activity Diagram</title>
+  <desc id="description">An activity diagram showing app launch, authentication, dashboard navigation, trip tracking, and incident reporting activities.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 z" fill="#475569"/></marker>
+    <style>
+      .page{fill:#F8FAFC}.title{font:800 30px Arial,sans-serif;fill:#0F172A}.subtitle{font:400 15px Arial,sans-serif;fill:#64748B}.lane{fill:#FFF;stroke:#CBD5E1;stroke-width:1.3;rx:20;ry:20}.lane-title{font:800 12px Arial,sans-serif;letter-spacing:1.3px;fill:#64748B}.action{fill:#FFF;stroke:#94A3B8;stroke-width:1.5;rx:13;ry:13}.action-blue{fill:#EAF2FF;stroke:#93C5FD;stroke-width:1.5;rx:13;ry:13}.action-green{fill:#ECFDF5;stroke:#86EFAC;stroke-width:1.5;rx:13;ry:13}.action-orange{fill:#FFF7ED;stroke:#FDBA74;stroke-width:1.5;rx:13;ry:13}.action-text{font:700 13px Arial,sans-serif;fill:#0F172A}.small{font:500 11px Arial,sans-serif;fill:#475569}.decision{fill:#FFFBEB;stroke:#FCD34D;stroke-width:1.5}.start{fill:#0F172A}.end{fill:#FFF;stroke:#0F172A;stroke-width:4}.connector{fill:none;stroke:#475569;stroke-width:1.7;marker-end:url(#arrow)}.label{font:700 11px Arial,sans-serif;fill:#64748B}.note{fill:#F0FDFA;stroke:#99F6E4;stroke-width:1;rx:10;ry:10}.note-text{font:500 11px Arial,sans-serif;fill:#0F766E}
+    </style>
+  </defs>
+  <rect class="page" width="1400" height="1120"/>
+  <text class="title" x="60" y="60">RoadPulse Ghana — Driver Activity Diagram</text>
+  <text class="subtitle" x="60" y="87">Main mobile-app activities from launch through authentication, tracking, and incident reporting</text>
+
+  <rect class="lane" x="55" y="120" width="380" height="970"/><text class="lane-title" x="78" y="150">DRIVER</text>
+  <rect class="lane" x="510" y="120" width="380" height="970"/><text class="lane-title" x="533" y="150">ROADPULSE MOBILE APP</text>
+  <rect class="lane" x="965" y="120" width="380" height="970"/><text class="lane-title" x="988" y="150">BACKEND &amp; PLATFORM SERVICES</text>
+
+  <circle class="start" cx="245" cy="190" r="13"/><text class="small" x="264" y="194">Start</text>
+  <rect class="action" x="125" y="230" width="240" height="54"/><text class="action-text" x="181" y="262">Open RoadPulse</text>
+  <path class="connector" d="M245 203 V230"/>
+
+  <rect class="action-blue" x="580" y="230" width="240" height="54"/><text class="action-text" x="624" y="254">Resolve stored session</text><text class="small" x="640" y="271">token · profile · onboarding</text>
+  <path class="connector" d="M365 257 H580"/>
+  <polygon class="decision" points="700,325 755,370 700,415 645,370"/><text class="action-text" x="673" y="367">Valid</text><text class="action-text" x="665" y="384">session?</text>
+  <path class="connector" d="M700 284 V325"/>
+  <text class="label" x="764" y="348">No</text><text class="label" x="608" y="348">Yes</text>
+
+  <rect class="action-orange" x="1025" y="342" width="260" height="58"/><text class="action-text" x="1082" y="366">OTP authentication</text><text class="small" x="1075" y="384">send code · verify identity</text>
+  <path class="connector" d="M755 370 H1025"/>
+  <rect class="action-blue" x="580" y="450" width="240" height="58"/><text class="action-text" x="620" y="474">Open Home dashboard</text><text class="small" x="622" y="492">live location · drive summary</text>
+  <path class="connector" d="M700 415 V450"/>
+  <path class="connector" d="M1155 400 V425 H820 V450"/>
+  <rect class="note" x="1025" y="445" width="260" height="46"/><text class="note-text" x="1043" y="464">Successful authentication stores access and</text><text class="note-text" x="1043" y="480">refresh tokens securely on the device.</text>
+
+  <polygon class="decision" points="700,550 760,595 700,640 640,595"/><text class="action-text" x="670" y="591">Choose</text><text class="action-text" x="672" y="608">activity</text>
+  <path class="connector" d="M700 508 V550"/>
+
+  <rect class="action" x="120" y="685" width="250" height="58"/><text class="action-text" x="172" y="709">Start a drive</text><text class="small" x="155" y="727">from Home or Tracking screen</text>
+  <path class="connector" d="M640 595 H500 V714 H370"/>
+  <text class="label" x="510" y="584">Track journey</text>
+  <rect class="action-green" x="580" y="685" width="240" height="58"/><text class="action-text" x="622" y="709">Request GPS permission</text><text class="small" x="620" y="727">get accurate initial location</text>
+  <path class="connector" d="M370 714 H580"/>
+  <polygon class="decision" points="700,785 760,830 700,875 640,830"/><text class="action-text" x="665" y="826">Permission</text><text class="action-text" x="675" y="843">granted?</text>
+  <path class="connector" d="M700 743 V785"/>
+  <rect class="action-orange" x="1025" y="800" width="260" height="58"/><text class="action-text" x="1083" y="824">Show permission guidance</text><text class="small" x="1077" y="842">Driver can retry later</text>
+  <path class="connector" d="M760 830 H1025"/><text class="label" x="776" y="817">No</text><text class="label" x="610" y="817">Yes</text>
+  <rect class="action-green" x="580" y="915" width="240" height="62"/><text class="action-text" x="616" y="939">Create tracking session</text><text class="small" x="604" y="957">collect, filter, sync GPS points</text>
+  <path class="connector" d="M700 875 V915"/>
+  <rect class="action-green" x="1025" y="915" width="260" height="62"/><text class="action-text" x="1080" y="939">Persist GPS points</text><text class="small" x="1080" y="957">update session and distance</text>
+  <path class="connector" d="M820 946 H1025"/>
+
+  <rect class="action-orange" x="120" y="815" width="250" height="58"/><text class="action-text" x="170" y="839">Report an incident</text><text class="small" x="142" y="857">type · severity · description · photo</text>
+  <path class="connector" d="M640 595 H500 V844 H370"/><text class="label" x="510" y="830">Report hazard</text>
+  <rect class="action-orange" x="580" y="1010" width="240" height="62"/><text class="action-text" x="606" y="1034">Attach current location</text><text class="small" x="600" y="1052">reverse geocode road and city</text>
+  <path class="connector" d="M370 844 H460 V1041 H580"/>
+  <rect class="action-orange" x="1025" y="1010" width="260" height="62"/><text class="action-text" x="1080" y="1034">Create incident report</text><text class="small" x="1080" y="1052">store report and optional image</text>
+  <path class="connector" d="M820 1041 H1025"/>
+
+  <text class="small" x="65" y="1090">Activity scope: This diagram focuses on the primary driver paths. Other activities—map browsing, notifications, settings, rewards, and insights—branch from the Home dashboard.</text>
+</svg>
