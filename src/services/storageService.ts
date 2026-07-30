@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 
 import { AuthTokens, DriverProfile } from '@/src/types/driver';
 import { ActiveTrackingState } from '@/src/types/tracking';
+import { ThemePreference } from '@/src/types/app';
 
 const KEYS = {
   driver: 'roadpulse.driver',
@@ -16,6 +17,7 @@ const KEYS = {
   fullName: 'roadpulse.fullName',
   doneOnBoarding: 'roadpulse.doneOnBoarding',
   activeTracking: 'roadpulse.activeTracking',
+  themePreference: 'roadpulse.themePreference',
 };
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -93,6 +95,13 @@ export const storageService = {
   },
   clearActiveTracking() {
     return AsyncStorage.removeItem(KEYS.activeTracking);
+  },
+  saveThemePreference(value: ThemePreference) {
+    return AsyncStorage.setItem(KEYS.themePreference, value);
+  },
+  async getThemePreference(): Promise<ThemePreference> {
+    const value = await AsyncStorage.getItem(KEYS.themePreference);
+    return value === 'light' || value === 'dark' || value === 'system' ? value : 'system';
   },
   async logout() {
     await AsyncStorage.multiRemove([

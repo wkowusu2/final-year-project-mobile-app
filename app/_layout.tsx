@@ -3,8 +3,13 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { useAppTheme } from '@/src/hooks/useAppTheme';
+import { AppThemeProvider } from '@/src/providers/AppThemeProvider';
 
 export default function RootLayout() {
+  return <AppThemeProvider><RootNavigator /></AppThemeProvider>;
+}
+
+function RootNavigator() {
   const theme = useAppTheme();
 
   return (

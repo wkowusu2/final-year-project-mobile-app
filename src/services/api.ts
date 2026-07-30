@@ -1,3 +1,5 @@
+import { router } from 'expo-router';
+
 import { API_BASE_URL } from '@/src/constants/api';
 import { storageService } from '@/src/services/storageService';
 import {
@@ -17,6 +19,9 @@ import {
   HomeDashboardResponse,
   IncidentDetailResponse,
   IncidentsResponse,
+  MapIncidentsResponse,
+  ProfileSummaryResponse,
+  RewardsResponse,
 } from '@/src/types/home';
 import { TrackingPoint, TrackingSession } from '@/src/types/tracking';
 
@@ -38,6 +43,22 @@ type RequestOptions = RequestInit & {
   requiresAuth?: boolean;
   retryOnAuthFailure?: boolean;
 };
+
+let refreshPromise: Promise<string> | null = null;
+let sessionExpiryPromise: Promise<void> | null = null;
+
+async function expireSession() {
+  if (!sessionExpiryPromise) {
+    sessionExpiryPromise = (async () => {
+      await storageService.logout();
+      router.replace('/(auth)/login');
+    })().finally(() => {
+      sessionExpiryPromise = null;
+    });
+  }
+
+  return sessionExpiryPromise;
+}
 
 async function parseResponse(response: Response): Promise<unknown> {
   const raw = await response.text();
@@ -64,10 +85,10 @@ function getErrorMessage(data: unknown, status: number) {
       : `API request failed with status ${status}`;
 }
 
-async function refreshAuthTokens() {
+async function refreshAuthTokensInternal() {
   const [refreshToken, userId] = await Promise.all([storageService.getRefreshToken(), storageService.getUserId()]);
   if (!refreshToken || !userId) {
-    await storageService.logout();
+    await expireSession();
     throw new Error('Session expired');
   }
 
@@ -78,7 +99,7 @@ async function refreshAuthTokens() {
   });
   const data = (await parseResponse(response)) as RefreshTokensResponse | null;
   if (!response.ok || !data?.success || !data.data) {
-    await storageService.logout();
+    await expireSession();
     throw new Error(data?.error ?? 'Session expired');
   }
 
@@ -88,6 +109,20 @@ async function refreshAuthTokens() {
   });
 
   return data.data.access_token;
+}
+
+/**
+ * A refresh token can only be used once by the backend. Share a single
+ * refresh operation between protected requests that fail at the same time.
+ */
+function refreshAuthTokens() {
+  if (!refreshPromise) {
+    refreshPromise = refreshAuthTokensInternal().finally(() => {
+      refreshPromise = null;
+    });
+  }
+
+  return refreshPromise;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -102,7 +137,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     const accessToken = await storageService.getAccessToken();
 
     if (!accessToken) {
-      await storageService.logout();
+      await expireSession();
       throw new Error('Session expired');
     }
 
@@ -132,6 +167,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
           Authorization: `Bearer ${accessToken}`,
         },
       });
+    }
+
+    if (requiresAuth && response.status === 401) {
+      await expireSession();
+      throw new Error('Session expired');
     }
 
     throw error;
@@ -171,6 +211,12 @@ export const api = {
       requiresAuth: true,
     });
   },
+  getProfileSummary() {
+    return request<ProfileSummaryResponse>('/driver-profiles/summary', { requiresAuth: true });
+  },
+  getRewards() {
+    return request<RewardsResponse>('/driver-profiles/rewards', { requiresAuth: true });
+  },
   createIncident(input: CreateIncidentInput) {
     const formData = new FormData();
     formData.append('type', input.type);
@@ -198,6 +244,10 @@ export const api = {
       method: 'POST',
       requiresAuth: true,
     });
+  },
+  getMapIncidents(bounds: RoadBounds, signal?: AbortSignal) {
+    const query = new URLSearchParams(Object.entries(bounds).map(([key, value]) => [key, String(value)]));
+    return request<MapIncidentsResponse>(`/incidents/map?${query}`, { requiresAuth: true, signal });
   },
   async getRoads(bounds: RoadBounds, signal?: AbortSignal) {
     const query = new URLSearchParams({

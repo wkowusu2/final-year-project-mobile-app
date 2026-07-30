@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { LatLng, Marker, Polyline } from 'react-native-maps';
 
-import { AppHeader, Card, Chip, Screen } from '@/src/components/ui';
+import { AppHeader, Card, Screen } from '@/src/components/ui';
 import { spacing } from '@/src/constants/design';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
 import { useLocationTracking } from '@/src/hooks/useLocationTracking';
@@ -82,19 +82,44 @@ export default function ActiveTrackingScreen() {
   const speedKmh = latestPoint?.speedMps == null ? 'Waiting' : `${Math.round(latestPoint.speedMps * 3.6)} km/h`;
   const accuracy = latestPoint?.accuracyMeters == null ? 'Waiting' : `${Math.round(latestPoint.accuracyMeters)} m`;
   const trackingLabel = isActive ? 'Drive in progress' : isPaused ? 'Tracking paused' : isStopPending ? 'Finishing drive' : 'Ready to drive';
+  const statusDetail = isActive
+    ? 'Your route is being recorded securely.'
+    : isPaused
+      ? 'Reconnect to continue recording this drive.'
+      : isStopPending
+        ? 'Saving your final trip points.'
+        : 'Ready when you are.';
+  const statusColor = isActive ? theme.success : isStopPending || isPaused ? theme.warning : theme.primary;
+  const gpsDetail = error ?? locationError ?? (latestPoint ? `GPS ${gpsStatus} · Accuracy ${accuracy}` : 'GPS will connect when you start');
 
   return (
-    <Screen style={styles.screen}>
-      <AppHeader title="Start a drive" subtitle="Your live location is used only while tracking." />
+    <Screen scrollable style={styles.screen}>
+      <AppHeader
+        title={isActive ? 'Your drive' : 'Drive tracker'}
+        subtitle={isActive ? 'Keep your eyes on the road—we will handle the details.' : 'Your live location is used only while tracking.'}
+      />
       <Card style={styles.mapShell}>
         <MapView
           ref={mapRef}
           initialRegion={fallbackRegion}
-          showsUserLocation
+          showsUserLocation={false}
           showsMyLocationButton={false}
           style={styles.map}>
           {state && state.route.length >= 2 && <Polyline coordinates={state.route} strokeColor={theme.primary} strokeWidth={6} />}
-          {mapCoordinate && <Marker coordinate={mapCoordinate} title={isActive ? 'Current drive location' : 'Your location'} pinColor={isActive ? theme.secondary : theme.primary} />}
+          {mapCoordinate && (
+            <Marker coordinate={mapCoordinate} title={isActive ? 'Current drive location' : 'Your location'} anchor={{ x: 0.5, y: 0.5 }} style={styles.driverMarkerContainer}>
+              <View collapsable={false} style={[styles.driverMarkerHalo, { backgroundColor: isActive ? 'rgba(37, 99, 235, 0.18)' : 'rgba(20, 184, 166, 0.18)' }]}>
+                <View style={[styles.driverMarker, { backgroundColor: isActive ? theme.primary : theme.secondary, borderColor: theme.surface }]}>
+                  <MaterialCommunityIcons
+                    color="#FFFFFF"
+                    name="navigation"
+                    size={12}
+                    style={{ transform: [{ rotate: `${latestPoint?.headingDegrees ?? 0}deg` }] }}
+                  />
+                </View>
+              </View>
+            </Marker>
+          )}
         </MapView>
 
         <View style={[styles.liveBadge, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -109,17 +134,33 @@ export default function ActiveTrackingScreen() {
           <MaterialCommunityIcons color={theme.primary} name="crosshairs-gps" size={22} />
         </Pressable>
 
-        <View style={[styles.dashboardOverlay, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <View style={styles.overlayHeader}>
-            <Chip label={trackingLabel} tone={isActive ? 'success' : isStopPending ? 'warning' : 'primary'} />
+      </Card>
+
+      <Card style={styles.dashboardOverlay}>
+        <View style={styles.driveHeader}>
+          <View style={[styles.driveIcon, { backgroundColor: isActive ? theme.successSoft : theme.primarySoft }]}>
+            <MaterialCommunityIcons color={statusColor} name={isActive ? 'navigation-variant' : isPaused ? 'pause-circle-outline' : isStopPending ? 'cloud-upload-outline' : 'steering'} size={21} />
+          </View>
+          <View style={styles.driveCopy}>
+            <Text style={[styles.driveEyebrow, { color: theme.textSecondary }]}>DRIVE STATUS</Text>
+            <Text style={[styles.driveTitle, { color: theme.textPrimary }]}>{trackingLabel}</Text>
+            <Text style={[styles.driveDetail, { color: theme.textSecondary }]}>{statusDetail}</Text>
+          </View>
+          <View style={[styles.networkPill, { backgroundColor: isOnline ? theme.successSoft : theme.warningSoft }]}>
+            <View style={[styles.networkDot, { backgroundColor: isOnline ? theme.success : theme.warning }]} />
             <Text style={[styles.networkText, { color: isOnline ? theme.success : theme.warning }]}>{isOnline ? 'Online' : 'Offline'}</Text>
           </View>
-          <View style={styles.statsRow}>
-            <Stat label="Speed" value={speedKmh} color={theme.textPrimary} />
-            <Stat label="Distance" value={formatDistance(state?.distanceMeters ?? 0)} color={theme.textPrimary} />
-            <Stat label="Duration" value={formatDuration(state?.session.startedAt, now)} color={theme.textPrimary} />
-          </View>
-          <Text style={[styles.status, { color: error || locationError ? theme.danger : theme.textSecondary }]}>{error ?? locationError ?? `GPS accuracy: ${accuracy} · ${gpsStatus}`}</Text>
+        </View>
+        <View style={[styles.statsRow, { borderColor: theme.border }]}>
+          <DriveMetric icon="speedometer" label="Speed" value={speedKmh} color={theme.textPrimary} />
+          <View style={[styles.metricDivider, { backgroundColor: theme.border }]} />
+          <DriveMetric icon="map-marker-distance" label="Distance" value={formatDistance(state?.distanceMeters ?? 0)} color={theme.textPrimary} />
+          <View style={[styles.metricDivider, { backgroundColor: theme.border }]} />
+          <DriveMetric icon="timer-outline" label="Duration" value={formatDuration(state?.session.startedAt, now)} color={theme.textPrimary} />
+        </View>
+        <View style={[styles.gpsRow, { backgroundColor: error || locationError ? theme.dangerSoft : theme.backgroundMuted }]}>
+          <MaterialCommunityIcons color={error || locationError ? theme.danger : theme.textSecondary} name={error || locationError ? 'alert-circle-outline' : 'satellite-variant'} size={16} />
+          <Text numberOfLines={1} style={[styles.status, { color: error || locationError ? theme.danger : theme.textSecondary }]}>{gpsDetail}</Text>
         </View>
       </Card>
 
@@ -128,13 +169,23 @@ export default function ActiveTrackingScreen() {
         {isPaused && <PrimaryAction label="Resume tracking" icon="play" loading={loading} onPress={() => void resumeTracking()} color={theme.primary} />}
         {(isActive || isStopPending) && <PrimaryAction label={isStopPending ? 'Retry stop' : 'Stop tracking'} icon="stop" loading={loading} onPress={() => void stopTracking()} color={theme.danger} />}
       </View>
+      <View style={[styles.privacyNote, { backgroundColor: theme.primarySoft, borderColor: theme.border }]}>
+        <View style={[styles.privacyIcon, { backgroundColor: theme.surface }]}><MaterialCommunityIcons color={theme.primary} name="shield-check-outline" size={19} /></View>
+        <Text style={[styles.privacyText, { color: theme.textSecondary }]}>{isActive ? 'Drive safely. Your trip points will sync whenever your connection is available.' : 'Start only when you are ready to move. Your GPS data helps improve local roads.'}</Text>
+      </View>
     </Screen>
   );
 }
 
-function Stat({ label, value, color }: { label: string; value: string; color: string }) {
+function DriveMetric({ icon, label, value, color }: { icon: string; label: string; value: string; color: string }) {
   const theme = useAppTheme();
-  return <View style={styles.stat}><Text style={[styles.statLabel, { color: theme.textSecondary }]}>{label}</Text><Text numberOfLines={1} style={[styles.statValue, { color }]}>{value}</Text></View>;
+  return (
+    <View style={styles.stat}>
+      <MaterialCommunityIcons color={theme.textMuted} name={icon as never} size={15} />
+      <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{label}</Text>
+      <Text numberOfLines={1} style={[styles.statValue, { color }]}>{value}</Text>
+    </View>
+  );
 }
 
 function PrimaryAction({ label, icon, loading, onPress, color }: { label: string; icon: string; loading: boolean; onPress: () => void; color: string }) {
@@ -147,21 +198,36 @@ function PrimaryAction({ label, icon, loading, onPress, color }: { label: string
 
 const styles = StyleSheet.create({
   screen: { paddingBottom: spacing.xl },
-  mapShell: { flex: 1, padding: 8, borderRadius: 24, overflow: 'hidden' },
-  map: { width: '100%', height: 540, borderRadius: 18 },
-  liveBadge: { position: 'absolute', top: 22, left: 22, borderWidth: 1, minHeight: 42, borderRadius: 14, paddingHorizontal: 11, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  mapShell: { padding: 8, borderRadius: 26, overflow: 'hidden' },
+  map: { width: '100%', height: 320, borderRadius: 20 },
+  driverMarkerContainer: { width: 32, height: 32 },
+  driverMarkerHalo: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  driverMarker: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 4, elevation: 3 },
+  liveBadge: { position: 'absolute', top: 22, left: 22, borderWidth: 1, minHeight: 40, borderRadius: 14, paddingHorizontal: 11, flexDirection: 'row', alignItems: 'center', gap: 7 },
   liveDot: { width: 8, height: 8, borderRadius: 4 },
   liveText: { fontSize: 12, fontWeight: '800' },
-  centerButton: { position: 'absolute', right: 22, top: 22, width: 47, height: 47, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  dashboardOverlay: { position: 'absolute', left: 22, right: 22, bottom: 22, borderWidth: 1, borderRadius: 18, padding: 12, gap: 10 },
-  overlayHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  networkText: { fontSize: 11, fontWeight: '800' },
-  statsRow: { flexDirection: 'row', gap: 8 },
-  stat: { flex: 1 },
+  centerButton: { position: 'absolute', right: 22, top: 22, width: 46, height: 46, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  dashboardOverlay: { borderRadius: 22, padding: 14, gap: 13 },
+  driveHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  driveIcon: { width: 42, height: 42, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  driveCopy: { flex: 1, gap: 1 },
+  driveEyebrow: { fontSize: 9, lineHeight: 13, fontWeight: '900', letterSpacing: 0.7 },
+  driveTitle: { fontSize: 15, lineHeight: 20, fontWeight: '900' },
+  driveDetail: { fontSize: 11, lineHeight: 15, fontWeight: '600' },
+  networkPill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  networkDot: { width: 6, height: 6, borderRadius: 3 },
+  networkText: { fontSize: 10, fontWeight: '900' },
+  statsRow: { flexDirection: 'row', alignItems: 'stretch', borderTopWidth: 1, paddingTop: 12 },
+  stat: { flex: 1, alignItems: 'center', gap: 2 },
+  metricDivider: { width: 1, marginVertical: 3 },
   statLabel: { fontSize: 10, lineHeight: 14, fontWeight: '700' },
-  statValue: { fontSize: 14, lineHeight: 19, fontWeight: '800' },
-  status: { fontSize: 11, lineHeight: 16, fontWeight: '600' },
-  actions: { minHeight: 56 },
-  primaryAction: { minHeight: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 9 },
-  primaryActionText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
+  statValue: { fontSize: 14, lineHeight: 19, fontWeight: '900' },
+  gpsRow: { minHeight: 32, borderRadius: 11, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  status: { flex: 1, fontSize: 10, lineHeight: 14, fontWeight: '700' },
+  privacyNote: { borderWidth: 1, borderRadius: 18, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  privacyIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  privacyText: { flex: 1, fontSize: 11, lineHeight: 16, fontWeight: '600' },
+  actions: { minHeight: 58 },
+  primaryAction: { minHeight: 58, borderRadius: 19, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 9 },
+  primaryActionText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
 });

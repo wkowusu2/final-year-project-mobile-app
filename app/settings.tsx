@@ -5,6 +5,14 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-nat
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '@/src/hooks/useAppTheme';
+import { useThemePreference } from '@/src/providers/AppThemeProvider';
+import { ThemePreference } from '@/src/types/app';
+
+const appearanceOptions: { id: ThemePreference; label: string; icon: string }[] = [
+  { id: 'system', label: 'System', icon: 'cellphone-cog' },
+  { id: 'light', label: 'Light', icon: 'white-balance-sunny' },
+  { id: 'dark', label: 'Dark', icon: 'weather-night' },
+];
 
 type PreferenceRowProps = {
   icon: string;
@@ -44,6 +52,7 @@ export default function SettingsScreen() {
   const [autoStart, setAutoStart] = useState(false);
   const [trafficAlerts, setTrafficAlerts] = useState(true);
   const [incidentAlerts, setIncidentAlerts] = useState(true);
+  const { preference, setPreference } = useThemePreference();
 
   return (
     <ScrollView
@@ -88,15 +97,31 @@ export default function SettingsScreen() {
       </SettingsGroup>
 
       <SettingsGroup title="App preferences" description="Appearance and language settings.">
-        <Pressable accessibilityRole="button" style={({ pressed }) => [styles.linkRow, { opacity: pressed ? 0.8 : 1 }]}>
+        <View style={styles.linkRow}>
           <View style={[styles.preferenceIcon, { backgroundColor: theme.primarySoft }]}><MaterialCommunityIcons color={theme.primary} name="theme-light-dark" size={20} /></View>
           <View style={styles.preferenceCopy}>
             <Text style={[styles.preferenceTitle, { color: theme.textPrimary }]}>Appearance</Text>
-            <Text style={[styles.preferenceDescription, { color: theme.textSecondary }]}>Following your device theme</Text>
+            <Text style={[styles.preferenceDescription, { color: theme.textSecondary }]}>Choose how RoadPulse looks on this device.</Text>
           </View>
-          <Text style={[styles.linkValue, { color: theme.textSecondary }]}>System</Text>
-          <MaterialCommunityIcons color={theme.textMuted} name="chevron-right" size={20} />
-        </Pressable>
+        </View>
+        <View style={styles.themeOptions}>
+          {appearanceOptions.map((option) => {
+            const selected = preference === option.id;
+            return (
+              <Pressable
+                key={option.id}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                onPress={() => void setPreference(option.id)}
+                style={({ pressed }) => [styles.themeOption, { backgroundColor: selected ? theme.primarySoft : theme.backgroundMuted, borderColor: selected ? theme.primary : 'transparent', opacity: pressed ? 0.78 : 1 }]}
+              >
+                <MaterialCommunityIcons color={selected ? theme.primary : theme.textSecondary} name={option.icon as never} size={18} />
+                <Text style={[styles.themeOptionText, { color: selected ? theme.primary : theme.textSecondary }]}>{option.label}</Text>
+                {selected ? <MaterialCommunityIcons color={theme.primary} name="check-circle" size={15} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <Pressable accessibilityRole="button" style={({ pressed }) => [styles.linkRow, { opacity: pressed ? 0.8 : 1 }]}>
           <View style={[styles.preferenceIcon, { backgroundColor: '#E4F8F5' }]}><MaterialCommunityIcons color="#078B7C" name="translate" size={20} /></View>
@@ -151,6 +176,9 @@ const styles = StyleSheet.create({
   noticeText: { flex: 1, fontSize: 11, lineHeight: 16, fontWeight: '600' },
   divider: { height: 1, marginVertical: 9 },
   linkRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  themeOptions: { flexDirection: 'row', gap: 7, marginTop: 5 },
+  themeOption: { flex: 1, minHeight: 68, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 5 },
+  themeOptionText: { fontSize: 11, fontWeight: '800' },
   linkValue: { fontSize: 12, fontWeight: '600' },
   footer: { fontSize: 11, fontWeight: '500', textAlign: 'center', marginTop: 1 },
 });

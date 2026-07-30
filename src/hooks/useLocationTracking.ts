@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 
-import { GPS_BATCH_SIZE, GPS_MAX_ACCURACY_METERS } from '@/src/constants/api';
+import { GPS_BATCH_SIZE, GPS_MAX_ACCURACY_METERS, GPS_MIN_MOVEMENT_METERS } from '@/src/constants/api';
 import { api } from '@/src/services/api';
 import { getCurrentLocationFix, toGpsPoint, watchForegroundLocation } from '@/src/services/locationService';
 import { storageService } from '@/src/services/storageService';
@@ -64,11 +64,21 @@ export function useLocationTracking(isOnline: boolean) {
 
     const rawPoint = toGpsPoint(location);
     const previous = current.latestPoint;
+    const movementMeters = previous ? distanceBetween(previous, rawPoint) : 0;
+    const minimumReliableMovement = previous
+      ? Math.max(GPS_MIN_MOVEMENT_METERS, accuracy, previous.accuracyMeters ?? 0)
+      : 0;
+
+    // GPS coordinates naturally drift while a device is stationary. Do not
+    // turn that drift into trip distance until a point exceeds both a small
+    // movement floor and the reported uncertainty of the GPS fixes.
+    if (previous && movementMeters < minimumReliableMovement) return;
+
     const elapsedSeconds = previous
       ? (new Date(rawPoint.recordedAt).getTime() - new Date(previous.recordedAt).getTime()) / 1000
       : 0;
     const calculatedSpeed = previous && elapsedSeconds > 0
-      ? distanceBetween(previous, rawPoint) / elapsedSeconds
+      ? movementMeters / elapsedSeconds
       : 0;
     const point: TrackingPoint = {
       ...rawPoint,
@@ -80,7 +90,7 @@ export function useLocationTracking(isOnline: boolean) {
       ...current,
       latestPoint: point,
       route: [...current.route, { latitude: point.latitude, longitude: point.longitude }].slice(-500),
-      distanceMeters: current.distanceMeters + (previous ? distanceBetween(previous, point) : 0),
+      distanceMeters: current.distanceMeters + movementMeters,
       outbox: [...current.outbox, point],
     };
     await persist(next);

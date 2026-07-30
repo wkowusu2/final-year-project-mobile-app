@@ -73,3 +73,28 @@ export type ConfirmIncidentResponse = {
   data: { confirmationCount: number; confirmedByCurrentDriver: boolean } | null;
   error: string | null;
 };
+
+export type MapIncidentsResponse = {
+  success: boolean;
+  data: { incidents: (HomeDashboardIncident & { latitude: number; longitude: number })[] } | null;
+  error: string | null;
+};
+
+export type ProfileSummaryResponse = {
+  success: boolean;
+  data: {
+    profile: { fullName: string; email: string | null; phone: string };
+    metrics: { distanceKm: number; trackingHours: number; reportCount: number; tripCount: number; contributionScore: number; contributionLevel: string };
+  } | null;
+  error: string | null;
+};
+
+export type RewardsResponse = {
+  success: boolean;
+  data: {
+    driver: { fullName: string; email: string | null; phone: string };
+    metrics: { distanceKm: number; trackingHours: number; reportCount: number; tripCount: number; contributionScore: number; contributionLevel: string };
+    badges: { id: string; name: string; description: string; progress: number; unlocked: boolean }[];
+  } | null;
+  error: string | null;
+};

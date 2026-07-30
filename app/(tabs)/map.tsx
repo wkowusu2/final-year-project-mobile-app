@@ -5,12 +5,12 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import MapView, { LatLng, Marker, Polyline, Region } from 'react-native-maps';
 
 import { AppHeader, Card, Screen } from '@/src/components/ui';
-import { incidents } from '@/src/data/mock-data';
 import { spacing } from '@/src/constants/design';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
 import { api } from '@/src/services/api';
-import { getCurrentLocation } from '@/src/services/locationService';
+import { getCurrentMapLocation, getLastKnownLocation } from '@/src/services/locationService';
 import { RoadBounds, RoadFeature } from '@/src/types/map';
+import { HomeDashboardIncident } from '@/src/types/home';
 
 const fallbackRegion = {
   latitude: 5.6037,
@@ -41,12 +41,14 @@ export default function MapScreen() {
   const theme = useAppTheme();
   const [activeFilter, setActiveFilter] = useState<'Traffic' | 'Incidents' | 'Roads'>('Traffic');
   const [roads, setRoads] = useState<RoadFeature[]>([]);
+  const [incidents, setIncidents] = useState<(HomeDashboardIncident & { latitude: number; longitude: number })[]>([]);
   const [isLoadingRoads, setIsLoadingRoads] = useState(false);
   const [roadError, setRoadError] = useState<string | null>(null);
   const [isViewportTooLarge, setIsViewportTooLarge] = useState(false);
   const [isTruncated, setIsTruncated] = useState(false);
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [isRefiningLocation, setIsRefiningLocation] = useState(false);
   const mapRef = useRef<MapView | null>(null);
   const latestBounds = useRef(boundsFromRegion(fallbackRegion));
   const requestVersion = useRef(0);
@@ -71,7 +73,10 @@ export default function MapScreen() {
     setRoadError(null);
 
     try {
-      const response = await api.getRoads(bounds, controller.signal);
+      const [response, incidentsResponse] = await Promise.all([
+        api.getRoads(bounds, controller.signal),
+        api.getMapIncidents(bounds, controller.signal),
+      ]);
       if (version !== requestVersion.current || controller.signal.aborted) {
         return;
       }
@@ -82,6 +87,10 @@ export default function MapScreen() {
 
       setRoads(response.data.features);
       setIsTruncated(response.data.truncated);
+      if (!incidentsResponse.success || !incidentsResponse.data) {
+        throw new Error(incidentsResponse.error ?? 'Unable to load map incidents');
+      }
+      setIncidents(incidentsResponse.data.incidents);
     } catch (error) {
       if (controller.signal.aborted || version !== requestVersion.current) {
         return;
@@ -105,19 +114,32 @@ export default function MapScreen() {
     latestBounds.current = boundsFromRegion(region);
     initializationComplete.current = true;
 
-    if (pendingFallbackLoad.current) {
-      pendingFallbackLoad.current = false;
-      void loadRoads(latestBounds.current);
-      return;
-    }
-
+    pendingFallbackLoad.current = false;
+    void loadRoads(latestBounds.current);
     suppressNextRegionLoad.current = true;
-    mapRef.current?.animateToRegion(region, 500);
+    mapRef.current?.animateToRegion(region, 250);
   }, [loadRoads]);
 
   const selectCurrentLocation = useCallback(async () => {
+    let hasQuickLocation = false;
+    setIsRefiningLocation(true);
+
     try {
-      const location = await getCurrentLocation();
+      const lastKnownLocation = await getLastKnownLocation();
+      if (!isFocused.current) {
+        return;
+      }
+
+      if (lastKnownLocation) {
+        hasQuickLocation = true;
+        setUserLocation(lastKnownLocation);
+        setLocationError(null);
+        pendingFallbackLoad.current = false;
+        pendingRegion.current = { ...lastKnownLocation, latitudeDelta: 0.04, longitudeDelta: 0.04 };
+        applyPendingRegion();
+      }
+
+      const location = await getCurrentMapLocation();
       if (!isFocused.current) {
         return;
       }
@@ -133,11 +155,20 @@ export default function MapScreen() {
         return;
       }
 
+      if (hasQuickLocation) {
+        setLocationError('Using a recent location because GPS could not refine your position.');
+        return;
+      }
+
       setUserLocation(null);
       setLocationError(error instanceof Error ? error.message : 'Unable to get your location.');
       pendingFallbackLoad.current = true;
       pendingRegion.current = fallbackRegion;
       applyPendingRegion();
+    } finally {
+      if (isFocused.current) {
+        setIsRefiningLocation(false);
+      }
     }
   }, [applyPendingRegion]);
 
@@ -178,7 +209,6 @@ export default function MapScreen() {
 
     if (suppressNextRegionLoad.current) {
       suppressNextRegionLoad.current = false;
-      void loadRoads(bounds);
       return;
     }
 
@@ -253,10 +283,10 @@ export default function MapScreen() {
           {incidents.map((incident) => (
             <Marker
               key={incident.id}
-              coordinate={incident.coordinate}
+              coordinate={{ latitude: incident.latitude, longitude: incident.longitude }}
               title={incident.type}
               description={incident.roadName}
-              pinColor={incident.severity === 'High' ? '#E5484D' : incident.severity === 'Medium' ? '#E99A20' : '#22A06B'}
+              pinColor={incident.severity === 'high' || incident.severity === 'critical' ? '#E5484D' : incident.severity === 'medium' ? '#E99A20' : '#22A06B'}
             />
           ))}
           {userLocation && <Marker coordinate={userLocation} title="You" pinColor={theme.primary} />}
@@ -267,7 +297,7 @@ export default function MapScreen() {
           </View>
           <View style={styles.locationBannerCopy}>
             <Text style={[styles.locationBannerTitle, { color: theme.textPrimary }]}>Your area</Text>
-            <Text numberOfLines={1} style={[styles.locationBannerText, { color: theme.textSecondary }]}>{userLocation ? 'Location found · live road data' : 'Finding your current location...'}</Text>
+            <Text numberOfLines={1} style={[styles.locationBannerText, { color: theme.textSecondary }]}>{userLocation ? isRefiningLocation ? 'Using recent location · refining GPS' : 'Location found · live road data' : 'Finding your current location...'}</Text>
           </View>
         </View>
         <View style={styles.mapControls}>

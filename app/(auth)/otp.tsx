@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AUTH_ROLE } from '@/src/constants/api';
 import { api } from '@/src/services/api';
@@ -22,14 +22,14 @@ function formatPhone(value: string) {
 
 export default function OtpScreen() {
   const params = useLocalSearchParams<{ phone?: string; mode?: string }>();
-  const [otp, setOtp] = useState(Array(6).fill('').join(''));
+  const [otpDigits, setOtpDigits] = useState<string[]>(Array(6).fill(''));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
   const phone = typeof params.phone === 'string' ? params.phone : '';
   const mode = params.mode === 'signup' ? 'signup' : 'login';
-  const otpDigits = otp.padEnd(6, '').slice(0, 6).split('');
+  const otp = otpDigits.join('');
   const isValid = otpDigits.every(Boolean);
 
   const title = mode === 'signup' ? 'Verify OTP' : 'Enter Verification Code';
@@ -47,14 +47,19 @@ export default function OtpScreen() {
   }, [phone]);
 
   function updateOtpDigit(index: number, value: string) {
-    const digit = value.replace(/\D/g, '').slice(-1);
+    const digits = value.replace(/\D/g, '').slice(0, 6 - index).split('');
     const nextOtp = [...otpDigits];
-    nextOtp[index] = digit;
-    setOtp(nextOtp.join(''));
-
-    if (digit && index < 5) {
-      inputRefs.current[index + 1]?.focus();
+    if (digits.length === 0) {
+      nextOtp[index] = '';
+      setOtpDigits(nextOtp);
+      return;
     }
+
+    digits.forEach((digit, offset) => { nextOtp[index + offset] = digit; });
+    setOtpDigits(nextOtp);
+
+    const nextIndex = Math.min(index + digits.length, 5);
+    requestAnimationFrame(() => inputRefs.current[nextIndex]?.focus());
   }
 
   function handleOtpKeyPress(index: number, key: string) {
@@ -62,15 +67,11 @@ export default function OtpScreen() {
       return;
     }
 
-    if (otpDigits[index]) {
+    if (!otpDigits[index] && index > 0) {
       const nextOtp = [...otpDigits];
-      nextOtp[index] = '';
-      setOtp(nextOtp.join(''));
-      return;
-    }
-
-    if (index > 0) {
-      inputRefs.current[index - 1]?.focus();
+      nextOtp[index - 1] = '';
+      setOtpDigits(nextOtp);
+      requestAnimationFrame(() => inputRefs.current[index - 1]?.focus());
     }
   }
 
@@ -154,7 +155,11 @@ export default function OtpScreen() {
   }
 
   return (
-    <View style={styles.screen}>
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
       <View style={styles.topIcon}>
         <View style={styles.topIconBase}>
           <View style={[styles.topIconBlend, { backgroundColor: '#5B21F0' }]} />
@@ -182,7 +187,10 @@ export default function OtpScreen() {
                   onChangeText={(value) => updateOtpDigit(index, value)}
                   onKeyPress={({ nativeEvent }) => handleOtpKeyPress(index, nativeEvent.key)}
                   keyboardType="number-pad"
-                  maxLength={1}
+                  maxLength={6}
+                  autoComplete="one-time-code"
+                  textContentType="oneTimeCode"
+                  onSubmitEditing={() => inputRefs.current[Math.min(index + 1, 5)]?.focus()}
                   textAlign="center"
                   style={styles.otpInput}
                 />
@@ -216,7 +224,8 @@ export default function OtpScreen() {
           <Text style={styles.secondaryActionText}>Change phone number</Text>
         </Pressable>
       </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -224,6 +233,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 18,
     paddingTop: 48,
     paddingBottom: 18,

@@ -3,7 +3,10 @@ import { router } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -86,116 +89,126 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View style={styles.topIcon}>
-        <View style={styles.topIconBase}>
-          <View style={[styles.topIconBlend, { backgroundColor: "#5B21F0" }]} />
-          <View
-            style={[
-              styles.topIconBlend,
-              styles.topIconBlendRight,
-              { backgroundColor: "#14B8A6" },
-            ]}
-          />
-          <MaterialCommunityIcons color="#FFFFFF" name="home" size={28} />
-        </View>
-      </View>
-
-      <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.heroText }]}>
-          Welcome Back
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.subtext }]}>
-          Enter your phone number to receive a one-time code
-        </Text>
-      </View>
-
-      <View style={styles.form}>
-        <View style={styles.fieldGroup}>
-          <Text style={[styles.label, { color: colors.label }]}>
-            Phone Number
-          </Text>
-          <View style={styles.phoneRow}>
+    <KeyboardAvoidingView
+      style={[styles.screen, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.topIcon}>
+          <View style={styles.topIconBase}>
+            <View
+              style={[styles.topIconBlend, { backgroundColor: "#5B21F0" }]}
+            />
             <View
               style={[
-                styles.countryChip,
-                {
-                  borderColor: colors.border,
-                  backgroundColor: colors.fieldMuted,
-                },
+                styles.topIconBlend,
+                styles.topIconBlendRight,
+                { backgroundColor: "#14B8A6" },
               ]}
-            >
-              <Text style={styles.flag}>🇬🇭</Text>
-              <Text style={[styles.countryCode, { color: colors.heroText }]}>
-                +233
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.phoneInputWrap,
-                { borderColor: colors.border, backgroundColor: colors.field },
-              ]}
-            >
-              <MaterialCommunityIcons
-                color={colors.subtext}
-                name="phone-outline"
-                size={18}
-              />
-              <TextInput
-                value={formatGhanaPhone(phone)}
-                onChangeText={(value) => setPhone(normalizePhone(value))}
-                placeholder="0XX XXX XXXX"
-                placeholderTextColor="#B0B5C7"
-                keyboardType="number-pad"
-                style={[
-                  styles.input,
-                  styles.phoneInput,
-                  { color: colors.heroText },
-                ]}
-              />
-            </View>
+            />
+            <MaterialCommunityIcons color="#FFFFFF" name="home" size={28} />
           </View>
         </View>
 
-        <Text style={[styles.legalText, { color: colors.subtext }]}>
-          By continuing, you agree to our{" "}
-          <Text style={[styles.link, { color: colors.link }]}>
-            Terms of Service
-          </Text>{" "}
-          and{" "}
-          <Text style={[styles.link, { color: colors.link }]}>
-            Privacy Policy
+        <View style={styles.content}>
+          <Text style={[styles.title, { color: colors.heroText }]}>
+            Welcome Back
           </Text>
-          . Standard message rates may apply.
-        </Text>
-
-        <Pressable
-          accessibilityRole="button"
-          disabled={!isValid || isSubmitting}
-          onPress={continueToOtp}
-          style={({ pressed }) => [
-            styles.primaryButton,
-            {
-              backgroundColor:
-                !isValid || isSubmitting
-                  ? colors.buttonDisabled
-                  : pressed
-                    ? colors.accentPressed
-                    : colors.accent,
-            },
-          ]}
-        >
-          <Text style={styles.primaryButtonText}>
-            {isSubmitting ? "Sending..." : "Send OTP"}
+          <Text style={[styles.subtitle, { color: colors.subtext }]}>
+            Enter your phone number to receive a one-time code
           </Text>
-          <MaterialCommunityIcons
-            color="#FFFFFF"
-            name="chevron-right"
-            size={20}
-          />
-        </Pressable>
+        </View>
 
-        <View style={styles.footer}>
+        <View style={styles.form}>
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.label, { color: colors.label }]}>
+              Phone Number
+            </Text>
+            <View style={styles.phoneRow}>
+              <View
+                style={[
+                  styles.countryChip,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.fieldMuted,
+                  },
+                ]}
+              >
+                <Text style={styles.flag}>🇬🇭</Text>
+                <Text style={[styles.countryCode, { color: colors.heroText }]}>
+                  +233
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.phoneInputWrap,
+                  { borderColor: colors.border, backgroundColor: colors.field },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  color={colors.subtext}
+                  name="phone-outline"
+                  size={18}
+                />
+                <TextInput
+                  value={formatGhanaPhone(phone)}
+                  onChangeText={(value) => setPhone(normalizePhone(value))}
+                  placeholder="0XX XXX XXXX"
+                  placeholderTextColor="#B0B5C7"
+                  keyboardType="number-pad"
+                  style={[
+                    styles.input,
+                    styles.phoneInput,
+                    { color: colors.heroText },
+                  ]}
+                />
+              </View>
+            </View>
+          </View>
+
+          <Text style={[styles.legalText, { color: colors.subtext }]}>
+            By continuing, you agree to our{" "}
+            <Text style={[styles.link, { color: colors.link }]}>
+              Terms of Service
+            </Text>{" "}
+            and{" "}
+            <Text style={[styles.link, { color: colors.link }]}>
+              Privacy Policy
+            </Text>
+            . Standard message rates may apply.
+          </Text>
+
+          <Pressable
+            accessibilityRole="button"
+            disabled={!isValid || isSubmitting}
+            onPress={continueToOtp}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              {
+                backgroundColor:
+                  !isValid || isSubmitting
+                    ? colors.buttonDisabled
+                    : pressed
+                      ? colors.accentPressed
+                      : colors.accent,
+              },
+            ]}
+          >
+            <Text style={styles.primaryButtonText}>
+              {isSubmitting ? "Sending..." : "Send OTP"}
+            </Text>
+            <MaterialCommunityIcons
+              color="#FFFFFF"
+              name="chevron-right"
+              size={20}
+            />
+          </Pressable>
+
+          {/* <View style={styles.footer}>
           <Text style={[styles.footerText, { color: colors.subtext }]}>
             Don&apos;t have an account?{" "}
           </Text>
@@ -204,15 +217,19 @@ export default function LoginScreen() {
               Register
             </Text>
           </Pressable>
+        </View> */}
         </View>
-      </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 18,
     paddingTop: 48,
     paddingBottom: 18,

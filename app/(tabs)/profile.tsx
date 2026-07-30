@@ -1,17 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { currentUser } from '@/src/data/mock-data';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
+import { api } from '@/src/services/api';
 import { storageService } from '@/src/services/storageService';
-
-const accountStats = [
-  { label: 'Distance', value: '1,284', unit: 'km', icon: 'map-marker-distance', color: '#6D3DF5', background: '#F0EBFF' },
-  { label: 'Reports', value: '46', unit: 'shared', icon: 'file-document-outline', color: '#078B7C', background: '#E4F8F5' },
-  { label: 'Impact', value: '4.8k', unit: 'points', icon: 'star-outline', color: '#B77908', background: '#FFF6D9' },
-] as const;
+import { ProfileSummaryResponse } from '@/src/types/home';
 
 const menuItems = [
   { id: 'settings', title: 'Settings', subtitle: 'Preferences and app controls', icon: 'cog-outline', route: '/settings' as const, color: '#6D3DF5', background: '#F0EBFF' },
@@ -22,6 +18,32 @@ const menuItems = [
 export default function ProfileScreen() {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const [summary, setSummary] = useState<ProfileSummaryResponse['data']>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadProfile = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await api.getProfileSummary();
+      if (!response.success || !response.data) throw new Error(response.error ?? 'Unable to load your profile.');
+      setSummary(response.data); setError(null);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to load your profile.'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useFocusEffect(useCallback(() => { void loadProfile(); }, [loadProfile]));
+
+  const fullName = summary?.profile.fullName ?? 'Loading profile';
+  const initials = fullName.split(' ').map((part) => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+  const metrics = summary?.metrics;
+  const accountStats = [
+    { label: 'Distance', value: `${metrics?.distanceKm.toFixed(0) ?? '0'}`, unit: 'km', icon: 'map-marker-distance', color: '#6D3DF5', background: '#F0EBFF' },
+    { label: 'Reports', value: String(metrics?.reportCount ?? 0), unit: 'shared', icon: 'file-document-outline', color: '#078B7C', background: '#E4F8F5' },
+    { label: 'Impact', value: String(metrics?.contributionScore ?? 0), unit: 'points', icon: 'star-outline', color: '#B77908', background: '#FFF6D9' },
+  ];
+  const nextLevelScore = (metrics?.contributionScore ?? 0) < 1000 ? 1000 : (metrics?.contributionScore ?? 0) < 2500 ? 2500 : 5000;
+  const progress = Math.min(100, Math.round(((metrics?.contributionScore ?? 0) / nextLevelScore) * 100));
 
   async function handleLogout() {
     await storageService.logout();
@@ -47,15 +69,18 @@ export default function ProfileScreen() {
         </Pressable>
       </View>
 
+      {loading && <View style={styles.loadingRow}><ActivityIndicator color={theme.primary} /><Text style={[styles.loadingText, { color: theme.textSecondary }]}>Refreshing profile...</Text></View>}
+      {error && <Pressable accessibilityRole="button" onPress={() => void loadProfile()} style={[styles.errorRow, { backgroundColor: theme.dangerSoft }]}><Text style={[styles.errorText, { color: theme.danger }]}>{error} · Retry</Text></Pressable>}
+
       <View style={styles.profileHero}>
         <View style={styles.profileHeroTop}>
-          <View style={styles.avatar}><Text style={styles.avatarText}>{currentUser.photoInitials}</Text></View>
+          <View style={styles.avatar}><Text style={styles.avatarText}>{initials}</Text></View>
           <View style={styles.profileCopy}>
-            <Text style={styles.name}>{currentUser.name}</Text>
-            <Text style={styles.location}>{currentUser.location}</Text>
+            <Text style={styles.name}>{fullName}</Text>
+            <Text style={styles.location}>{summary?.profile.email ?? summary?.profile.phone ?? 'RoadPulse driver'}</Text>
             <View style={styles.badgeRow}>
               <MaterialCommunityIcons color="#F8D782" name="medal-outline" size={14} />
-              <Text style={styles.badgeText}>Gold contributor</Text>
+              <Text style={styles.badgeText}>{metrics?.contributionLevel ?? 'Community contributor'}</Text>
             </View>
           </View>
         </View>
@@ -63,7 +88,7 @@ export default function ProfileScreen() {
         <View style={styles.heroFooter}>
           <View>
             <Text style={styles.heroFooterLabel}>CONTRIBUTION LEVEL</Text>
-            <Text style={styles.heroFooterValue}>{currentUser.contributionLevel}</Text>
+            <Text style={styles.heroFooterValue}>{metrics?.contributionLevel ?? 'Community contributor'}</Text>
           </View>
           <Pressable accessibilityRole="button" onPress={() => router.push('/rewards')} hitSlop={8}>
             <Text style={styles.rewardsLink}>View rewards</Text>
@@ -75,7 +100,7 @@ export default function ProfileScreen() {
         {accountStats.map((stat) => (
           <View key={stat.label} style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={[styles.statIcon, { backgroundColor: stat.background }]}>
-              <MaterialCommunityIcons color={stat.color} name={stat.icon} size={18} />
+              <MaterialCommunityIcons color={stat.color} name={stat.icon as never} size={18} />
             </View>
             <Text style={[styles.statValue, { color: theme.textPrimary }]}>{stat.value}</Text>
             <Text style={[styles.statUnit, { color: theme.textSecondary }]}>{stat.unit}</Text>
@@ -88,12 +113,12 @@ export default function ProfileScreen() {
         <View style={styles.progressTitleRow}>
           <View style={[styles.progressIcon, { backgroundColor: theme.primarySoft }]}><MaterialCommunityIcons color={theme.primary} name="trending-up" size={20} /></View>
           <View style={styles.progressCopy}>
-            <Text style={[styles.progressTitle, { color: theme.textPrimary }]}>Close to Platinum</Text>
-            <Text style={[styles.progressHint, { color: theme.textSecondary }]}>320 points until your next level</Text>
+            <Text style={[styles.progressTitle, { color: theme.textPrimary }]}>Contribution progress</Text>
+            <Text style={[styles.progressHint, { color: theme.textSecondary }]}>{Math.max(0, nextLevelScore - (metrics?.contributionScore ?? 0))} points to your next level</Text>
           </View>
-          <Text style={[styles.progressPercentage, { color: theme.primary }]}>72%</Text>
+          <Text style={[styles.progressPercentage, { color: theme.primary }]}>{progress}%</Text>
         </View>
-        <View style={[styles.progressTrack, { backgroundColor: theme.primarySoft }]}><View style={[styles.progressFill, { backgroundColor: theme.primary }]} /></View>
+        <View style={[styles.progressTrack, { backgroundColor: theme.primarySoft }]}><View style={[styles.progressFill, { backgroundColor: theme.primary, width: `${progress}%` }]} /></View>
       </View>
 
       <View style={styles.sectionHeader}>
@@ -178,4 +203,8 @@ const styles = StyleSheet.create({
   logoutButton: { minHeight: 54, borderRadius: 17, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 2 },
   logoutText: { color: '#D84045', fontSize: 14, fontWeight: '800' },
   footer: { fontSize: 11, fontWeight: '500', textAlign: 'center', marginTop: 2 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: -8 },
+  loadingText: { fontSize: 12, fontWeight: '600' },
+  errorRow: { borderRadius: 14, padding: 12 },
+  errorText: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
 });

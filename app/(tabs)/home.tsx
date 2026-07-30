@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppTheme } from "@/src/hooks/useAppTheme";
+import { getDetectedLocation, getLastKnownDetectedLocation } from "@/src/services/locationService";
 import { api } from "@/src/services/api";
 import { HomeDashboard } from "@/src/types/home";
 
@@ -67,6 +68,7 @@ export default function HomeScreen() {
   const [dashboard, setDashboard] = useState<HomeDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [locationLabel, setLocationLabel] = useState<string | null>(null);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
@@ -87,10 +89,30 @@ export default function HomeScreen() {
     }
   }, []);
 
+  const loadLocation = useCallback(async () => {
+    let hasRecentLocation = false;
+
+    try {
+      const recentLocation = await getLastKnownDetectedLocation();
+      if (recentLocation) {
+        hasRecentLocation = true;
+        setLocationLabel(recentLocation.label);
+      }
+
+      const liveLocation = await getDetectedLocation();
+      setLocationLabel(liveLocation.label);
+    } catch {
+      if (!hasRecentLocation) {
+        setLocationLabel("Location unavailable");
+      }
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       void loadDashboard();
-    }, [loadDashboard]),
+      void loadLocation();
+    }, [loadDashboard, loadLocation]),
   );
 
   const firstName = dashboard?.driver.fullName.split(" ")[0] ?? "Driver";
@@ -137,7 +159,7 @@ export default function HomeScreen() {
               size={15}
             />
             <Text style={[styles.location, { color: theme.textSecondary }]}>
-              {dashboard?.driver.location ?? "Loading your area..."}
+              {locationLabel ?? "Finding your location..."}
             </Text>
           </View>
         </View>

@@ -101,6 +101,6 @@ export const darkTheme = {
   tabBar: 'rgba(17, 28, 48, 0.96)',
 };
 
-export type AppTheme = typeof lightTheme;
+export type AppTheme = typeof lightTheme | typeof darkTheme;
 
 export const Colors = lightTheme;
