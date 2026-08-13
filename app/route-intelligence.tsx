@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import MapView, { LatLng, Marker, Polyline, Region } from 'react-native-maps';
 
 import { AppHeader, Card, Screen } from '@/src/components/ui';
 import { spacing } from '@/src/constants/design';
@@ -18,10 +19,30 @@ function formatDistance(meters: number) {
   return `${(meters / 1000).toFixed(meters < 10_000 ? 1 : 0)} km`;
 }
 
+function coordinatesForRoute(route: RouteAlternative): LatLng[] {
+  return route.geometry.coordinates.map(([longitude, latitude]) => ({ latitude, longitude }));
+}
+
+function regionForRoute(route: RouteAlternative): Region | null {
+  const coordinates = coordinatesForRoute(route);
+  if (coordinates.length < 2) return null;
+  const latitudes = coordinates.map((point) => point.latitude);
+  const longitudes = coordinates.map((point) => point.longitude);
+  const minLatitude = Math.min(...latitudes); const maxLatitude = Math.max(...latitudes);
+  const minLongitude = Math.min(...longitudes); const maxLongitude = Math.max(...longitudes);
+  return {
+    latitude: (minLatitude + maxLatitude) / 2,
+    longitude: (minLongitude + maxLongitude) / 2,
+    latitudeDelta: Math.max(0.012, (maxLatitude - minLatitude) * 1.35),
+    longitudeDelta: Math.max(0.012, (maxLongitude - minLongitude) * 1.35),
+  };
+}
+
 export default function RouteIntelligenceScreen() {
   const theme = useAppTheme();
   const [destination, setDestination] = useState('');
   const [routes, setRoutes] = useState<RouteAlternative[]>([]);
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,6 +54,7 @@ export default function RouteIntelligenceScreen() {
       const response = await api.getRouteIntelligence(origin, resolvedDestination);
       if (!response.success || !response.data) throw new Error(response.error ?? 'Unable to calculate routes.');
       setRoutes(response.data.routes);
+      setSelectedRouteId(response.data.routes[0]?.id ?? null);
     } catch (caught) {
       setRoutes([]);
       setError(caught instanceof Error ? caught.message : 'Unable to calculate routes.');
@@ -53,22 +75,41 @@ export default function RouteIntelligenceScreen() {
     </Card>
     {error && <Card style={[styles.messageCard, { borderColor: theme.danger, backgroundColor: theme.dangerSoft }]}><Text style={[styles.messageText, { color: theme.danger }]}>{error}</Text></Card>}
     {!loading && !error && routes.length === 0 && <Card style={styles.messageCard}><Text style={[styles.messageText, { color: theme.textSecondary }]}>Enter a destination to see route alternatives, live traffic evidence, and incident impacts.</Text></Card>}
-    {routes.map((route, index) => <RouteCard key={route.id} route={route} recommended={index === 0} />)}
+    {routes.map((route, index) => <RouteCard key={route.id} route={route} recommended={index === 0} selected={route.id === selectedRouteId} onPress={() => setSelectedRouteId(route.id)} />)}
+    {routes.find((route) => route.id === selectedRouteId) && <RouteMap route={routes.find((route) => route.id === selectedRouteId)!} />}
   </Screen>;
 }
 
-function RouteCard({ route, recommended }: { route: RouteAlternative; recommended: boolean }) {
+function RouteCard({ route, recommended, selected, onPress }: { route: RouteAlternative; recommended: boolean; selected: boolean; onPress: () => void }) {
   const theme = useAppTheme();
   const trafficColor = route.trafficLevel === 'free' ? theme.success : route.trafficLevel === 'moderate' ? theme.warning : route.trafficLevel === 'heavy' || route.trafficLevel === 'severe' ? theme.danger : theme.textSecondary;
   const extraMinutes = Math.max(0, Math.round((route.estimatedDurationSeconds - route.baseDurationSeconds) / 60));
-  return <Card style={[styles.routeCard, recommended && { borderColor: theme.primary, backgroundColor: theme.primarySoft }]}>
+  return <Pressable accessibilityRole="button" accessibilityLabel={`View ${recommended ? 'recommended' : 'alternative'} route on map`} onPress={onPress}>
+    <Card style={[styles.routeCard, (recommended || selected) && { borderColor: theme.primary, backgroundColor: selected ? theme.primarySoft : theme.surface }]}>
     <View style={styles.routeHeader}><View><Text style={[styles.routeTitle, { color: theme.textPrimary }]}>{recommended ? 'Recommended route' : 'Alternative route'}</Text><Text style={[styles.routeMeta, { color: theme.textSecondary }]}>{formatDistance(route.distanceMeters)} · {route.matchedRoadCount} roads with live samples</Text></View>{recommended && <View style={[styles.recommendedBadge, { backgroundColor: theme.primary }]}><Text style={styles.recommendedText}>BEST NOW</Text></View>}</View>
     <View style={styles.etaRow}><Text style={[styles.eta, { color: theme.textPrimary }]}>{formatDuration(route.estimatedDurationSeconds)}</Text><View style={[styles.trafficBadge, { backgroundColor: `${trafficColor}22` }]}><View style={[styles.trafficDot, { backgroundColor: trafficColor }]} /><Text style={[styles.trafficText, { color: trafficColor }]}>{route.trafficLevel === 'unknown' ? 'Limited live data' : `${route.trafficLevel} traffic`}</Text></View></View>
     <Text style={[styles.routeExplanation, { color: theme.textSecondary }]}>{route.medianSpeedKph == null ? 'No recent matched-speed samples on this route. ETA uses the routing baseline.' : `${Math.round(route.medianSpeedKph)} km/h median speed from ${route.trafficSampleCount} recent matched points${extraMinutes ? ` · about ${extraMinutes} min slower than baseline` : ''}.`}</Text>
     {route.incidents.length > 0 && <View style={[styles.incidentNotice, { borderColor: theme.warning, backgroundColor: theme.warningSoft }]}><MaterialCommunityIcons name="alert-outline" color={theme.warning} size={17} /><Text style={[styles.incidentText, { color: theme.textPrimary }]}>{route.incidents.length} active incident{route.incidents.length > 1 ? 's' : ''} near this route</Text></View>}
+    <Text style={[styles.tapHint, { color: selected ? theme.primary : theme.textMuted }]}>{selected ? 'Showing this route on the map below' : 'Tap to view this route on the map'}</Text>
+    </Card>
+  </Pressable>;
+}
+
+function RouteMap({ route }: { route: RouteAlternative }) {
+  const theme = useAppTheme();
+  const coordinates = coordinatesForRoute(route);
+  const region = regionForRoute(route);
+  if (!region || coordinates.length < 2) return null;
+  return <Card style={styles.mapCard}>
+    <View style={styles.mapHeader}><View><Text style={[styles.routeTitle, { color: theme.textPrimary }]}>Selected route</Text><Text style={[styles.routeMeta, { color: theme.textSecondary }]}>{formatDistance(route.distanceMeters)} · {formatDuration(route.estimatedDurationSeconds)}</Text></View><MaterialCommunityIcons name="map-marker-path" color={theme.primary} size={24} /></View>
+    <MapView initialRegion={region} style={styles.map}>
+      <Polyline coordinates={coordinates} strokeColor={theme.primary} strokeWidth={5} />
+      <Marker coordinate={coordinates[0]} title="Your location" pinColor={theme.success} />
+      <Marker coordinate={coordinates[coordinates.length - 1]} title="Destination" pinColor={theme.danger} />
+    </MapView>
   </Card>;
 }
 
 const styles = StyleSheet.create({
-  searchCard: { gap: spacing.sm }, label: { fontSize: 10, fontWeight: '800', letterSpacing: 1 }, destinationInput: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderWidth: 1, borderRadius: 12, paddingHorizontal: spacing.sm }, input: { flex: 1, minHeight: 48, fontSize: 15 }, searchButton: { minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }, searchButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }, messageCard: { padding: spacing.md }, messageText: { fontSize: 13, lineHeight: 20 }, routeCard: { gap: spacing.sm }, routeHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }, routeTitle: { fontSize: 16, fontWeight: '800' }, routeMeta: { fontSize: 12, marginTop: 3 }, recommendedBadge: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 5, alignSelf: 'flex-start' }, recommendedText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: .5 }, etaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, eta: { fontSize: 28, fontWeight: '900', letterSpacing: -1 }, trafficBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 99, paddingHorizontal: 9, paddingVertical: 6 }, trafficDot: { width: 7, height: 7, borderRadius: 99 }, trafficText: { fontSize: 11, fontWeight: '800', textTransform: 'capitalize' }, routeExplanation: { fontSize: 13, lineHeight: 19 }, incidentNotice: { borderWidth: 1, borderRadius: 10, padding: 9, flexDirection: 'row', gap: 7, alignItems: 'center' }, incidentText: { fontSize: 12, fontWeight: '700' },
+  searchCard: { gap: spacing.sm }, label: { fontSize: 10, fontWeight: '800', letterSpacing: 1 }, destinationInput: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderWidth: 1, borderRadius: 12, paddingHorizontal: spacing.sm }, input: { flex: 1, minHeight: 48, fontSize: 15 }, searchButton: { minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }, searchButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }, messageCard: { padding: spacing.md }, messageText: { fontSize: 13, lineHeight: 20 }, routeCard: { gap: spacing.sm }, routeHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }, routeTitle: { fontSize: 16, fontWeight: '800' }, routeMeta: { fontSize: 12, marginTop: 3 }, recommendedBadge: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 5, alignSelf: 'flex-start' }, recommendedText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: .5 }, etaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, eta: { fontSize: 28, fontWeight: '900', letterSpacing: -1 }, trafficBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 99, paddingHorizontal: 9, paddingVertical: 6 }, trafficDot: { width: 7, height: 7, borderRadius: 99 }, trafficText: { fontSize: 11, fontWeight: '800', textTransform: 'capitalize' }, routeExplanation: { fontSize: 13, lineHeight: 19 }, incidentNotice: { borderWidth: 1, borderRadius: 10, padding: 9, flexDirection: 'row', gap: 7, alignItems: 'center' }, incidentText: { fontSize: 12, fontWeight: '700' }, tapHint: { fontSize: 11, fontWeight: '700' }, mapCard: { gap: spacing.sm }, mapHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, map: { height: 260, borderRadius: 12 },
 });
