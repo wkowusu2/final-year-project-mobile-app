@@ -9,7 +9,7 @@ import { spacing } from '@/src/constants/design';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
 import { api } from '@/src/services/api';
 import { getCurrentMapLocation, getLastKnownLocation } from '@/src/services/locationService';
-import { RoadBounds, RoadFeature } from '@/src/types/map';
+import { RoadBounds, RoadFeature, RoadTraffic, TrafficLevel } from '@/src/types/map';
 import { HomeDashboardIncident } from '@/src/types/home';
 
 const fallbackRegion = {
@@ -37,10 +37,21 @@ function coordinatesFromRoad(road: RoadFeature) {
   return coordinates.length >= 2 ? coordinates : null;
 }
 
+function trafficColor(level: TrafficLevel | undefined, theme: ReturnType<typeof useAppTheme>) {
+  switch (level) {
+    case 'free': return theme.congestionFree;
+    case 'moderate': return theme.congestionModerate;
+    case 'heavy': return theme.congestionHeavy;
+    case 'severe': return theme.congestionSevere;
+    default: return theme.mapRoad;
+  }
+}
+
 export default function MapScreen() {
   const theme = useAppTheme();
   const [activeFilter, setActiveFilter] = useState<'Traffic' | 'Incidents' | 'Roads'>('Traffic');
   const [roads, setRoads] = useState<RoadFeature[]>([]);
+  const [traffic, setTraffic] = useState<RoadTraffic[]>([]);
   const [incidents, setIncidents] = useState<(HomeDashboardIncident & { latitude: number; longitude: number })[]>([]);
   const [isLoadingRoads, setIsLoadingRoads] = useState(false);
   const [roadError, setRoadError] = useState<string | null>(null);
@@ -73,9 +84,10 @@ export default function MapScreen() {
     setRoadError(null);
 
     try {
-      const [response, incidentsResponse] = await Promise.all([
+      const [response, incidentsResponse, trafficResponse] = await Promise.all([
         api.getRoads(bounds, controller.signal),
         api.getMapIncidents(bounds, controller.signal),
+        api.getMapTraffic(bounds, controller.signal),
       ]);
       if (version !== requestVersion.current || controller.signal.aborted) {
         return;
@@ -91,6 +103,10 @@ export default function MapScreen() {
         throw new Error(incidentsResponse.error ?? 'Unable to load map incidents');
       }
       setIncidents(incidentsResponse.data.incidents);
+      if (!trafficResponse.success || !trafficResponse.data) {
+        throw new Error(trafficResponse.error ?? 'Unable to load nearby traffic');
+      }
+      setTraffic(trafficResponse.data.roads);
     } catch (error) {
       if (controller.signal.aborted || version !== requestVersion.current) {
         return;
@@ -119,6 +135,11 @@ export default function MapScreen() {
     suppressNextRegionLoad.current = true;
     mapRef.current?.animateToRegion(region, 250);
   }, [loadRoads]);
+
+  const trafficByRoad = new Map(traffic.map((road) => [road.osmId, road]));
+  const visibleRoads = activeFilter !== 'Incidents';
+  const visibleIncidents = activeFilter !== 'Roads';
+  const trafficRoadCount = traffic.filter((road) => road.trafficLevel !== 'unknown').length;
 
   const selectCurrentLocation = useCallback(async () => {
     let hasQuickLocation = false;
@@ -269,18 +290,19 @@ export default function MapScreen() {
           onRegionChangeComplete={handleRegionChange}
           showsUserLocation={Boolean(userLocation)}
           style={styles.map}>
-          {roads.map((road) => {
+          {visibleRoads && roads.map((road) => {
             const coordinates = coordinatesFromRoad(road);
+            const roadTraffic = trafficByRoad.get(road.id);
             return coordinates ? (
               <Polyline
                 key={road.id}
                 coordinates={coordinates}
                 strokeWidth={road.properties.highway.includes('motorway') || road.properties.highway.includes('trunk') ? 4 : 3}
-                strokeColor={theme.textSecondary}
+                strokeColor={activeFilter === 'Traffic' ? trafficColor(roadTraffic?.trafficLevel, theme) : theme.textSecondary}
               />
             ) : null;
           })}
-          {incidents.map((incident) => (
+          {visibleIncidents && incidents.map((incident) => (
             <Marker
               key={incident.id}
               coordinate={{ latitude: incident.latitude, longitude: incident.longitude }}
@@ -332,16 +354,17 @@ export default function MapScreen() {
           </View>
         )}
         <View style={[styles.mapLegend, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#22A06B' }]} /><Text style={[styles.legendText, { color: theme.textSecondary }]}>Clear</Text></View>
-          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#E99A20' }]} /><Text style={[styles.legendText, { color: theme.textSecondary }]}>Slow</Text></View>
-          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#E5484D' }]} /><Text style={[styles.legendText, { color: theme.textSecondary }]}>Incident</Text></View>
+          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: theme.congestionFree }]} /><Text style={[styles.legendText, { color: theme.textSecondary }]}>Free</Text></View>
+          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: theme.congestionModerate }]} /><Text style={[styles.legendText, { color: theme.textSecondary }]}>Moderate</Text></View>
+          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: theme.congestionHeavy }]} /><Text style={[styles.legendText, { color: theme.textSecondary }]}>Heavy</Text></View>
+          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: theme.congestionSevere }]} /><Text style={[styles.legendText, { color: theme.textSecondary }]}>Severe</Text></View>
         </View>
       </Card>
       <Card style={styles.summaryCard}>
         <View style={styles.summaryIcon}><MaterialCommunityIcons color="#6D3DF5" name="traffic-light-outline" size={20} /></View>
         <View style={styles.summaryCopy}>
-          <Text style={[styles.infoTitle, { color: theme.textPrimary }]}>Traffic update</Text>
-          <Text style={[styles.infoBody, { color: theme.textSecondary }]}>Slowdowns are building around Spintex Road and Circle. Liberation Road is moving steadily.</Text>
+          <Text style={[styles.infoTitle, { color: theme.textPrimary }]}>Nearby traffic</Text>
+          <Text style={[styles.infoBody, { color: theme.textSecondary }]}>{trafficRoadCount ? `${trafficRoadCount} nearby roads have recent traffic samples. Colored roads use the last 30 minutes of matched GPS data.` : 'No nearby roads have enough recent GPS samples yet. Roads stay grey until traffic can be estimated.'}</Text>
         </View>
         <MaterialCommunityIcons color={theme.textMuted} name="chevron-right" size={20} />
       </Card>

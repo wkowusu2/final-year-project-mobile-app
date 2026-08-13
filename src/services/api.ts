@@ -11,7 +11,7 @@ import {
   VerifyOtpPayload,
   VerifyOtpResponse,
 } from '@/src/types/driver';
-import { RoadBounds, RoadsResponse } from '@/src/types/map';
+import { MapTrafficResponse, RoadBounds, RoadsResponse } from '@/src/types/map';
 import {
   ConfirmIncidentResponse,
   CreateIncidentInput,
@@ -266,6 +266,10 @@ export const api = {
     });
 
     return response;
+  },
+  getMapTraffic(bounds: RoadBounds, signal?: AbortSignal) {
+    const query = new URLSearchParams(Object.entries(bounds).map(([key, value]) => [key, String(value)]));
+    return request<MapTrafficResponse>(`/map/traffic?${query}`, { requiresAuth: true, signal });
   },
   startTrackingSession(startedAt: string) {
     return request<TrackingSessionResponse>('/tracking/sessions', {
