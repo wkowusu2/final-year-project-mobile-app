@@ -24,6 +24,7 @@ import {
   RewardsResponse,
 } from '@/src/types/home';
 import { TrackingPoint, TrackingSession } from '@/src/types/tracking';
+import { RouteIntelligenceResponse } from '@/src/types/routes';
 
 type TrackingSessionResponse = {
   success: boolean;
@@ -270,6 +271,15 @@ export const api = {
   getMapTraffic(bounds: RoadBounds, signal?: AbortSignal) {
     const query = new URLSearchParams(Object.entries(bounds).map(([key, value]) => [key, String(value)]));
     return request<MapTrafficResponse>(`/map/traffic?${query}`, { requiresAuth: true, signal });
+  },
+  getRouteIntelligence(origin: { latitude: number; longitude: number }, destination: { latitude: number; longitude: number }) {
+    const query = new URLSearchParams({
+      originLat: String(origin.latitude),
+      originLng: String(origin.longitude),
+      destinationLat: String(destination.latitude),
+      destinationLng: String(destination.longitude),
+    });
+    return request<RouteIntelligenceResponse>(`/routes/intelligence?${query}`, { requiresAuth: true });
   },
   startTrackingSession(startedAt: string) {
     return request<TrackingSessionResponse>('/tracking/sessions', {

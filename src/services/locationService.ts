@@ -47,6 +47,16 @@ export async function getCurrentMapLocation() {
   };
 }
 
+/** Resolves a driver-entered destination immediately while the route screen is visible. */
+export async function geocodeDestination(destination: string) {
+  const permission = await ensureLocationPermission();
+  if (permission.status !== 'granted') throw new Error('Location permission was not granted.');
+  const matches = await Location.geocodeAsync(destination);
+  const match = matches[0];
+  if (!match) throw new Error('We could not find that destination. Try a more specific place name.');
+  return { latitude: match.latitude, longitude: match.longitude };
+}
+
 /**
  * Returns a recent device location without waiting for a new GPS fix. This is
  * intentionally suitable for quickly positioning maps, not for drive tracking.

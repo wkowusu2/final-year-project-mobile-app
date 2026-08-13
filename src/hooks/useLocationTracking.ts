@@ -41,10 +41,10 @@ export function useLocationTracking(isOnline: boolean) {
     subscription.current = null;
   }, []);
 
-  const flush = useCallback(async (current: ActiveTrackingState) => {
+  const flush = useCallback(async (current: ActiveTrackingState, force = false) => {
     if (flushing.current) return flushing.current;
     flushing.current = (async () => {
-      while (current.outbox.length) {
+      while (current.outbox.length >= GPS_BATCH_SIZE || (force && current.outbox.length > 0)) {
         const batch = current.outbox.slice(0, GPS_BATCH_SIZE);
         const response = await api.sendTrackingPoints(current.session.id, batch);
         if (!response.success || !response.data) throw new Error(response.error ?? 'Unable to sync GPS points.');
@@ -94,7 +94,10 @@ export function useLocationTracking(isOnline: boolean) {
       outbox: [...current.outbox, point],
     };
     await persist(next);
-    if (isOnline) {
+    // Send normal drive updates as a sequence. Valhalla needs at least two
+    // points to map-match a trace reliably; batching five points also gives it
+    // enough movement context for parallel roads and junctions.
+    if (isOnline && next.outbox.length >= GPS_BATCH_SIZE) {
       try { await flush(next); } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to sync GPS points.'); }
     }
   }, [flush, isOnline, persist]);
@@ -179,7 +182,7 @@ export function useLocationTracking(isOnline: boolean) {
     const pending = { ...state, lifecycle: 'stopPending' as const };
     await persist(pending);
     try {
-      await flush(pending);
+      await flush(pending, true);
       const response = await api.completeTrackingSession(pending.session.id, new Date().toISOString());
       if (!response.success) throw new Error(response.error ?? 'Unable to finish tracking.');
       await persist(null); setGpsStatus('Unavailable');
