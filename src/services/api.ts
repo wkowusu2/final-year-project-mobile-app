@@ -25,6 +25,7 @@ import {
 } from '@/src/types/home';
 import { TrackingPoint, TrackingSession } from '@/src/types/tracking';
 import { RouteIntelligenceResponse } from '@/src/types/routes';
+import { RoadAdvisoriesResponse } from '@/src/types/advisories';
 
 type TrackingSessionResponse = {
   success: boolean;
@@ -280,6 +281,9 @@ export const api = {
       destinationLng: String(destination.longitude),
     });
     return request<RouteIntelligenceResponse>(`/routes/intelligence?${query}`, { requiresAuth: true });
+  },
+  getRoadAdvisories() {
+    return request<RoadAdvisoriesResponse>('/road-advisories', { requiresAuth: true });
   },
   startTrackingSession(startedAt: string) {
     return request<TrackingSessionResponse>('/tracking/sessions', {

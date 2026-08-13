@@ -11,6 +11,7 @@ export type RouteAlternative = {
   trafficSampleCount: number;
   matchedRoadCount: number;
   incidents: { id: string; type: string; severity: string; roadName: string }[];
+  advisories: { id: string; title: string; type: string; impact: string; roadName: string }[];
 };
 
 export type RouteIntelligenceResponse = {

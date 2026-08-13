@@ -34,6 +34,7 @@ function RootNavigator() {
         <Stack.Screen name="traffic-heatmap" />
         <Stack.Screen name="traffic-insights" />
         <Stack.Screen name="government-analytics" />
+        <Stack.Screen name="government-policy" />
       </Stack>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
     </>

@@ -1,75 +1,41 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, AppHeader, Card, MiniBarChart, Screen, SectionTitle } from '@/src/components/ui';
+import { AppButton, MiniBarChart, Screen } from '@/src/components/ui';
 import { heatmapCells, routeComparison, trafficByDay, trafficByHour } from '@/src/data/mock-data';
-import { spacing } from '@/src/constants/design';
+import { radius, spacing } from '@/src/constants/design';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
 
 export default function InsightsScreen() {
   const theme = useAppTheme();
+  const busiest = heatmapCells.reduce((highest, cell) => cell.value > highest.value ? cell : highest, heatmapCells[0]);
 
-  return (
-    <Screen scrollable>
-      <AppHeader title="Traffic Insights Dashboard" subtitle="Analytics for commuters, planners, and operations teams" />
-      <View style={styles.actions}>
-        <AppButton label="Route Intelligence" onPress={() => router.push('/route-intelligence')} />
-        <AppButton label="Government Preview" variant="ghost" onPress={() => router.push('/government-analytics')} />
-      </View>
-      <Card>
-        <SectionTitle title="Traffic by Hour" />
-        <MiniBarChart data={trafficByHour} />
-      </Card>
-      <Card>
-        <SectionTitle title="Traffic by Day" />
-        <MiniBarChart data={trafficByDay} color={theme.secondary} />
-      </Card>
-      <Card>
-        <SectionTitle title="Congestion Heatmap" action="Open map" />
-        <View style={styles.heatmapGrid}>
-          {heatmapCells.map((cell) => (
-            <View key={cell.label} style={[styles.heatCell, { backgroundColor: `rgba(37, 99, 235, ${Math.max(0.15, cell.value / 100)})` }]}>
-              <Text style={styles.heatLabel}>{cell.label}</Text>
-              <Text style={styles.heatValue}>{cell.value}%</Text>
-            </View>
-          ))}
-        </View>
-      </Card>
-      <Card>
-        <SectionTitle title="Route Comparison" />
-        <MiniBarChart data={routeComparison} color={theme.warning} />
-      </Card>
-      <AppButton label="Open Full Insights" onPress={() => router.push('/traffic-insights')} />
-    </Screen>
-  );
+  return <Screen scrollable style={styles.screen}>
+    <View style={styles.header}><View><Text style={[styles.eyebrow, { color: theme.primary }]}>TRAFFIC INTELLIGENCE</Text><Text style={[styles.title, { color: theme.textPrimary }]}>Move with more confidence.</Text><Text style={[styles.subtitle, { color: theme.textSecondary }]}>Patterns from your community’s recent road activity.</Text></View><View style={[styles.headerIcon, { backgroundColor: theme.primarySoft }]}><MaterialCommunityIcons name="chart-timeline-variant" size={25} color={theme.primary} /></View></View>
+
+    <Pressable accessibilityRole="button" onPress={() => router.push('/(tabs)/map')} style={({ pressed }) => [styles.hero, { backgroundColor: theme.primary, opacity: pressed ? .9 : 1 }]}>
+      <View style={styles.heroTop}><View style={styles.heroIcon}><MaterialCommunityIcons name="traffic-light-outline" color="#fff" size={22} /></View><View style={styles.livePill}><View style={styles.liveDot} /><Text style={styles.liveText}>LIVE PULSE</Text></View></View>
+      <Text style={styles.heroTitle}>{busiest.label} is your busiest area</Text><Text style={styles.heroBody}>Traffic activity is at {busiest.value}% of the observed peak. Open the map to see nearby road conditions.</Text>
+      <View style={styles.heroAction}><Text style={styles.heroActionText}>View live traffic</Text><MaterialCommunityIcons name="arrow-right" color="#fff" size={18} /></View>
+    </Pressable>
+
+    <View style={styles.sectionHeader}><View><Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>When traffic builds</Text><Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>Community activity by hour</Text></View><View style={[styles.rushPill, { backgroundColor: theme.warningSoft }]}><MaterialCommunityIcons name="clock-outline" color={theme.warning} size={15} /><Text style={[styles.rushText, { color: theme.warning }]}>Rush hours</Text></View></View>
+    <View style={[styles.chartCard, { backgroundColor: theme.surface, borderColor: theme.border }]}><MiniBarChart data={trafficByHour} color={theme.primary} /><View style={[styles.chartNote, { borderTopColor: theme.border }]}><MaterialCommunityIcons name="information-outline" color={theme.textMuted} size={15} /><Text style={[styles.chartNoteText, { color: theme.textSecondary }]}>Highest demand typically appears around 8 AM and 6 PM.</Text></View></View>
+
+    <View style={styles.sectionHeader}><View><Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Congestion hotspots</Text><Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>Relative traffic intensity by area</Text></View><Pressable accessibilityRole="button" onPress={() => router.push('/traffic-heatmap')}><Text style={[styles.link, { color: theme.primary }]}>Open map</Text></Pressable></View>
+    <View style={styles.heatmapGrid}>{heatmapCells.map((cell) => { const isHigh = cell.value >= 85; return <View key={cell.label} style={[styles.heatCell, { backgroundColor: isHigh ? theme.dangerSoft : theme.primarySoft, borderColor: isHigh ? `${theme.danger}55` : theme.border }]}><Text style={[styles.heatLabel, { color: theme.textSecondary }]}>{cell.label}</Text><Text style={[styles.heatValue, { color: isHigh ? theme.danger : theme.primary }]}>{cell.value}%</Text><View style={[styles.heatBarTrack, { backgroundColor: theme.surface }]}><View style={[styles.heatBar, { width: `${cell.value}%`, backgroundColor: isHigh ? theme.danger : theme.primary }]} /></View></View>; })}</View>
+
+    <View style={styles.sectionHeader}><View><Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Route comparison</Text><Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>Typical travel time by corridor</Text></View></View>
+    <View style={[styles.chartCard, { backgroundColor: theme.surface, borderColor: theme.border }]}><MiniBarChart data={routeComparison} color={theme.secondary} /></View>
+
+    <View style={[styles.routeCta, { backgroundColor: theme.surface, borderColor: theme.border }]}><View style={[styles.routeIcon, { backgroundColor: theme.secondarySoft }]}><MaterialCommunityIcons name="routes" color={theme.secondary} size={22} /></View><View style={styles.routeCopy}><Text style={[styles.routeTitle, { color: theme.textPrimary }]}>Plan a live route</Text><Text style={[styles.routeBody, { color: theme.textSecondary }]}>Compare alternatives with current matched-road traffic.</Text></View><Pressable accessibilityRole="button" onPress={() => router.push('/route-intelligence')} style={[styles.routeButton, { backgroundColor: theme.primary }]}><MaterialCommunityIcons name="arrow-top-right" color="#fff" size={19} /></Pressable></View>
+    <View style={[styles.routeCta, { backgroundColor: theme.surface, borderColor: theme.border }]}><View style={[styles.routeIcon, { backgroundColor: theme.warningSoft }]}><MaterialCommunityIcons name="road-variant" color={theme.warning} size={22} /></View><View style={styles.routeCopy}><Text style={[styles.routeTitle, { color: theme.textPrimary }]}>Road works & advisories</Text><Text style={[styles.routeBody, { color: theme.textSecondary }]}>Check planned maintenance, closures, and diversions.</Text></View><Pressable accessibilityRole="button" onPress={() => router.push('/government-policy')} style={[styles.routeButton, { backgroundColor: theme.primary }]}><MaterialCommunityIcons name="arrow-top-right" color="#fff" size={19} /></Pressable></View>
+
+    <AppButton label="View detailed traffic insights" variant="outline" onPress={() => router.push('/traffic-insights')} />
+  </Screen>;
 }
 
 const styles = StyleSheet.create({
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  heatmapGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  heatCell: {
-    width: '30%',
-    minHeight: 78,
-    borderRadius: 16,
-    padding: spacing.sm,
-    justifyContent: 'space-between',
-  },
-  heatLabel: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  heatValue: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '900',
-  },
+  screen: { paddingTop: spacing.xl, gap: spacing.lg }, header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.md }, eyebrow: { fontSize: 10, fontWeight: '900', letterSpacing: 1.3, marginBottom: 7 }, title: { fontSize: 27, fontWeight: '900', letterSpacing: -.8 }, subtitle: { fontSize: 13, lineHeight: 19, marginTop: 6, maxWidth: 280 }, headerIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' }, hero: { borderRadius: radius.xl, padding: spacing.lg, gap: spacing.sm }, heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, heroIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,.18)', alignItems: 'center', justifyContent: 'center' }, livePill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 99, backgroundColor: 'rgba(255,255,255,.16)', paddingHorizontal: 9, paddingVertical: 6 }, liveDot: { width: 6, height: 6, borderRadius: 99, backgroundColor: '#9FF4D2' }, liveText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: .8 }, heroTitle: { color: '#fff', fontSize: 20, fontWeight: '900', marginTop: spacing.sm }, heroBody: { color: 'rgba(255,255,255,.82)', fontSize: 13, lineHeight: 19 }, heroAction: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: spacing.xs }, heroActionText: { color: '#fff', fontSize: 13, fontWeight: '800' }, sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, marginTop: spacing.xs }, sectionTitle: { fontSize: 17, fontWeight: '900' }, sectionSubtitle: { fontSize: 11, marginTop: 3 }, rushPill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 5 }, rushText: { fontSize: 10, fontWeight: '800' }, chartCard: { borderWidth: 1, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm }, chartNote: { borderTopWidth: 1, paddingTop: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: 6 }, chartNoteText: { flex: 1, fontSize: 11, lineHeight: 16 }, link: { fontSize: 12, fontWeight: '800' }, heatmapGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }, heatCell: { width: '31%', borderWidth: 1, borderRadius: radius.md, padding: spacing.sm, gap: 5 }, heatLabel: { fontSize: 10, fontWeight: '800' }, heatValue: { fontSize: 19, fontWeight: '900' }, heatBarTrack: { height: 4, borderRadius: 99, overflow: 'hidden' }, heatBar: { height: '100%', borderRadius: 99 }, routeCta: { borderWidth: 1, borderRadius: radius.lg, padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, routeIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, routeCopy: { flex: 1 }, routeTitle: { fontSize: 14, fontWeight: '900' }, routeBody: { fontSize: 11, lineHeight: 16, marginTop: 3 }, routeButton: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 });

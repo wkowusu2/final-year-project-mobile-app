@@ -1,0 +1,20 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+
+import { AppHeader, Card, Screen } from '@/src/components/ui';
+import { spacing } from '@/src/constants/design';
+import { useAppTheme } from '@/src/hooks/useAppTheme';
+import { api } from '@/src/services/api';
+import { RoadAdvisory } from '@/src/types/advisories';
+
+const typeLabels: Record<string, string> = { maintenance: 'Maintenance', road_closure: 'Road closure', diversion: 'Diversion', signal_work: 'Signal work', event_restriction: 'Event restriction' };
+
+export default function GovernmentPolicyScreen() {
+  const theme = useAppTheme(); const [advisories, setAdvisories] = useState<RoadAdvisory[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => { setLoading(true); try { const response = await api.getRoadAdvisories(); if (!response.success || !response.data) throw new Error(response.error ?? 'Unable to load road advisories.'); setAdvisories(response.data.advisories); setError(null); } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to load road advisories.'); } finally { setLoading(false); } }, []);
+  useFocusEffect(useCallback(() => { void load(); }, [load]));
+  return <Screen scrollable><AppHeader title="Road works & advisories" subtitle="Planned government works and active road-management notices." />{loading ? <Card style={styles.state}><ActivityIndicator color={theme.primary} /></Card> : error ? <Card style={[styles.state, { borderColor: theme.danger }]}><Text style={{ color: theme.danger }}>{error}</Text></Card> : advisories.length ? advisories.map((advisory) => <Card key={advisory.id} style={styles.card}><View style={styles.row}><View style={[styles.icon, { backgroundColor: advisory.impact === 'high' ? theme.dangerSoft : theme.warningSoft }]}><MaterialCommunityIcons name={advisory.type === 'road_closure' ? 'road-variant' : 'tools'} color={advisory.impact === 'high' ? theme.danger : theme.warning} size={21} /></View><View style={styles.copy}><Text style={[styles.title, { color: theme.textPrimary }]}>{advisory.title}</Text><Text style={[styles.meta, { color: theme.primary }]}>{typeLabels[advisory.type] ?? advisory.type} · {advisory.status}</Text></View></View><Text style={[styles.description, { color: theme.textSecondary }]}>{advisory.description}</Text><View style={[styles.location, { borderTopColor: theme.border }]}><MaterialCommunityIcons name="map-marker-outline" color={theme.textMuted} size={16} /><Text style={[styles.locationText, { color: theme.textSecondary }]}>{advisory.roadName}, {advisory.city}</Text></View><Text style={[styles.date, { color: theme.textMuted }]}>Starts {new Date(advisory.startsAt).toLocaleString()}</Text></Card>) : <Card style={styles.state}><MaterialCommunityIcons name="check-circle-outline" color={theme.success} size={25} /><Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>No current road advisories</Text><Text style={[styles.emptyText, { color: theme.textSecondary }]}>There are no planned works or active restrictions published right now.</Text></Card>}</Screen>;
+}
+const styles = StyleSheet.create({ state: { alignItems: 'center', gap: spacing.sm, padding: spacing.lg }, card: { gap: spacing.sm }, row: { flexDirection: 'row', gap: spacing.sm }, icon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center' }, copy: { flex: 1 }, title: { fontSize: 15, fontWeight: '800' }, meta: { marginTop: 3, fontSize: 11, fontWeight: '700', textTransform: 'capitalize' }, description: { fontSize: 13, lineHeight: 19 }, location: { borderTopWidth: 1, paddingTop: spacing.sm, flexDirection: 'row', gap: 5, alignItems: 'center' }, locationText: { fontSize: 12 }, date: { fontSize: 11 }, emptyTitle: { fontSize: 15, fontWeight: '800' }, emptyText: { textAlign: 'center', fontSize: 12, lineHeight: 18 } });
