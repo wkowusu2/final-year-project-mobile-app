@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { LatLng, Marker, Polyline, Region } from 'react-native-maps';
 
@@ -11,6 +11,7 @@ import { api } from '@/src/services/api';
 import { getCurrentMapLocation, getLastKnownLocation } from '@/src/services/locationService';
 import { RoadBounds, RoadFeature, RoadTraffic, TrafficLevel } from '@/src/types/map';
 import { HomeDashboardIncident } from '@/src/types/home';
+import { RoadAdvisory } from '@/src/types/advisories';
 
 const fallbackRegion = {
   latitude: 5.6037,
@@ -19,6 +20,16 @@ const fallbackRegion = {
   longitudeDelta: 0.18,
 };
 const MAX_VIEWPORT_SPAN = 0.25;
+const NEARBY_ADVISORY_RADIUS_METERS = 5_000;
+
+function distanceInMeters(origin: LatLng, destination: { latitude: number; longitude: number }) {
+  const radians = (value: number) => value * Math.PI / 180;
+  const earthRadius = 6_371_000;
+  const latitudeDelta = radians(destination.latitude - origin.latitude);
+  const longitudeDelta = radians(destination.longitude - origin.longitude);
+  const value = Math.sin(latitudeDelta / 2) ** 2 + Math.cos(radians(origin.latitude)) * Math.cos(radians(destination.latitude)) * Math.sin(longitudeDelta / 2) ** 2;
+  return earthRadius * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
+}
 
 function boundsFromRegion(region: Region): RoadBounds {
   return {
@@ -53,6 +64,7 @@ export default function MapScreen() {
   const [roads, setRoads] = useState<RoadFeature[]>([]);
   const [traffic, setTraffic] = useState<RoadTraffic[]>([]);
   const [incidents, setIncidents] = useState<(HomeDashboardIncident & { latitude: number; longitude: number })[]>([]);
+  const [advisories, setAdvisories] = useState<RoadAdvisory[]>([]);
   const [isLoadingRoads, setIsLoadingRoads] = useState(false);
   const [roadError, setRoadError] = useState<string | null>(null);
   const [isViewportTooLarge, setIsViewportTooLarge] = useState(false);
@@ -137,6 +149,15 @@ export default function MapScreen() {
   }, [loadRoads]);
 
   const trafficByRoad = new Map(traffic.map((road) => [road.osmId, road]));
+  const nearbyAdvisories = useMemo(() => {
+    if (!userLocation) return [];
+    return advisories.filter((advisory): advisory is RoadAdvisory & { latitude: number; longitude: number } => (
+      advisory.status === 'active' &&
+      advisory.latitude != null &&
+      advisory.longitude != null &&
+      distanceInMeters(userLocation, { latitude: advisory.latitude, longitude: advisory.longitude }) <= NEARBY_ADVISORY_RADIUS_METERS
+    ));
+  }, [advisories, userLocation]);
   const visibleRoads = activeFilter !== 'Incidents';
   const visibleIncidents = activeFilter !== 'Roads';
   const trafficRoadCount = traffic.filter((road) => road.trafficLevel !== 'unknown').length;
@@ -198,6 +219,9 @@ export default function MapScreen() {
       isFocused.current = true;
       initializationComplete.current = false;
       void selectCurrentLocation();
+      void api.getRoadAdvisories().then((response) => {
+        if (isFocused.current && response.success && response.data) setAdvisories(response.data.advisories);
+      }).catch(() => { /* The live map remains usable if advisories cannot be loaded. */ });
 
       return () => {
         isFocused.current = false;
@@ -254,7 +278,7 @@ export default function MapScreen() {
   }, [loadRoads]);
 
   return (
-    <Screen style={styles.container}>
+    <Screen scrollable style={styles.container}>
       <AppHeader
         title="Live traffic"
         subtitle="See what is happening around you."
@@ -282,6 +306,14 @@ export default function MapScreen() {
           );
         })}
       </View>
+      <Card style={styles.summaryCard}>
+        <View style={styles.summaryIcon}><MaterialCommunityIcons color="#6D3DF5" name="traffic-light-outline" size={20} /></View>
+        <View style={styles.summaryCopy}>
+          <Text style={[styles.infoTitle, { color: theme.textPrimary }]}>Nearby traffic</Text>
+          <Text style={[styles.infoBody, { color: theme.textSecondary }]}>{trafficRoadCount ? `${trafficRoadCount} nearby roads have recent traffic samples. Colored roads use the last 30 minutes of matched GPS data.` : 'No nearby roads have enough recent GPS samples yet. Roads stay grey until traffic can be estimated.'}</Text>
+        </View>
+        <MaterialCommunityIcons color={theme.textMuted} name="chevron-right" size={20} />
+      </Card>
       <Card style={styles.mapShell}>
         <MapView
           ref={mapRef}
@@ -309,6 +341,15 @@ export default function MapScreen() {
               title={incident.type}
               description={incident.roadName}
               pinColor={incident.severity === 'high' || incident.severity === 'critical' ? '#E5484D' : incident.severity === 'medium' ? '#E99A20' : '#22A06B'}
+            />
+          ))}
+          {nearbyAdvisories.map((advisory) => (
+            <Marker
+              key={`advisory-${advisory.id}`}
+              coordinate={{ latitude: advisory.latitude, longitude: advisory.longitude }}
+              title={advisory.title}
+              description={`${advisory.roadName} · Road works`}
+              pinColor={advisory.impact === 'high' ? theme.danger : theme.warning}
             />
           ))}
           {userLocation && <Marker coordinate={userLocation} title="You" pinColor={theme.primary} />}
@@ -360,14 +401,16 @@ export default function MapScreen() {
           <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: theme.congestionSevere }]} /><Text style={[styles.legendText, { color: theme.textSecondary }]}>Severe</Text></View>
         </View>
       </Card>
-      <Card style={styles.summaryCard}>
-        <View style={styles.summaryIcon}><MaterialCommunityIcons color="#6D3DF5" name="traffic-light-outline" size={20} /></View>
-        <View style={styles.summaryCopy}>
-          <Text style={[styles.infoTitle, { color: theme.textPrimary }]}>Nearby traffic</Text>
-          <Text style={[styles.infoBody, { color: theme.textSecondary }]}>{trafficRoadCount ? `${trafficRoadCount} nearby roads have recent traffic samples. Colored roads use the last 30 minutes of matched GPS data.` : 'No nearby roads have enough recent GPS samples yet. Roads stay grey until traffic can be estimated.'}</Text>
-        </View>
-        <MaterialCommunityIcons color={theme.textMuted} name="chevron-right" size={20} />
-      </Card>
+      {userLocation && nearbyAdvisories.length > 0 && (
+        <Pressable accessibilityRole="button" onPress={() => router.push('/government-policy')} style={({ pressed }) => [styles.advisoryCard, { backgroundColor: theme.warningSoft, borderColor: theme.warning, opacity: pressed ? 0.86 : 1 }]}>
+          <View style={[styles.summaryIcon, { backgroundColor: theme.surface }]}><MaterialCommunityIcons color={theme.warning} name="road-variant" size={20} /></View>
+          <View style={styles.summaryCopy}>
+            <Text style={[styles.infoTitle, { color: theme.textPrimary }]}>{nearbyAdvisories.length} nearby road work{nearbyAdvisories.length === 1 ? '' : 's'}</Text>
+            <Text numberOfLines={2} style={[styles.infoBody, { color: theme.textSecondary }]}>{nearbyAdvisories.map((advisory) => advisory.roadName).join(' · ')} within 5 km of your location.</Text>
+          </View>
+          <MaterialCommunityIcons color={theme.warning} name="chevron-right" size={20} />
+        </Pressable>
+      )}
     </Screen>
   );
 }
@@ -391,9 +434,10 @@ const styles = StyleSheet.create({
   },
   map: {
     width: '100%',
-    height: 500,
+    height: 720,
     borderRadius: 18,
   },
+  advisoryCard: { minHeight: 88, borderWidth: 1, borderRadius: 20, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 11 },
   locationBanner: { position: 'absolute', top: 22, left: 22, right: 82, minHeight: 58, borderRadius: 17, borderWidth: 1, padding: 9, flexDirection: 'row', alignItems: 'center', gap: 9 },
   locationBannerIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   locationBannerCopy: { flex: 1 },
