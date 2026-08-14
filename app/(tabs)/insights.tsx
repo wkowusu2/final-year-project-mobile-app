@@ -2,37 +2,24 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, MiniBarChart, Screen } from '@/src/components/ui';
-import { heatmapCells, routeComparison, trafficByDay, trafficByHour } from '@/src/data/mock-data';
+import { Screen } from '@/src/components/ui';
 import { radius, spacing } from '@/src/constants/design';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
 
 export default function InsightsScreen() {
   const theme = useAppTheme();
-  const busiest = heatmapCells.reduce((highest, cell) => cell.value > highest.value ? cell : highest, heatmapCells[0]);
-
   return <Screen scrollable style={styles.screen}>
     <View style={styles.header}><View><Text style={[styles.eyebrow, { color: theme.primary }]}>TRAFFIC INTELLIGENCE</Text><Text style={[styles.title, { color: theme.textPrimary }]}>Move with more confidence.</Text><Text style={[styles.subtitle, { color: theme.textSecondary }]}>Patterns from your community’s recent road activity.</Text></View><View style={[styles.headerIcon, { backgroundColor: theme.primarySoft }]}><MaterialCommunityIcons name="chart-timeline-variant" size={25} color={theme.primary} /></View></View>
 
     <Pressable accessibilityRole="button" onPress={() => router.push('/(tabs)/map')} style={({ pressed }) => [styles.hero, { backgroundColor: theme.primary, opacity: pressed ? .9 : 1 }]}>
       <View style={styles.heroTop}><View style={styles.heroIcon}><MaterialCommunityIcons name="traffic-light-outline" color="#fff" size={22} /></View><View style={styles.livePill}><View style={styles.liveDot} /><Text style={styles.liveText}>LIVE PULSE</Text></View></View>
-      <Text style={styles.heroTitle}>{busiest.label} is your busiest area</Text><Text style={styles.heroBody}>Traffic activity is at {busiest.value}% of the observed peak. Open the map to see nearby road conditions.</Text>
+      <Text style={styles.heroTitle}>See live traffic around you</Text><Text style={styles.heroBody}>Open the map to view current road conditions, nearby incidents, and active road works.</Text>
       <View style={styles.heroAction}><Text style={styles.heroActionText}>View live traffic</Text><MaterialCommunityIcons name="arrow-right" color="#fff" size={18} /></View>
     </Pressable>
-
-    <View style={styles.sectionHeader}><View><Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>When traffic builds</Text><Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>Community activity by hour</Text></View><View style={[styles.rushPill, { backgroundColor: theme.warningSoft }]}><MaterialCommunityIcons name="clock-outline" color={theme.warning} size={15} /><Text style={[styles.rushText, { color: theme.warning }]}>Rush hours</Text></View></View>
-    <View style={[styles.chartCard, { backgroundColor: theme.surface, borderColor: theme.border }]}><MiniBarChart data={trafficByHour} color={theme.primary} /><View style={[styles.chartNote, { borderTopColor: theme.border }]}><MaterialCommunityIcons name="information-outline" color={theme.textMuted} size={15} /><Text style={[styles.chartNoteText, { color: theme.textSecondary }]}>Highest demand typically appears around 8 AM and 6 PM.</Text></View></View>
-
-    <View style={styles.sectionHeader}><View><Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Congestion hotspots</Text><Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>Relative traffic intensity by area</Text></View><Pressable accessibilityRole="button" onPress={() => router.push('/traffic-heatmap')}><Text style={[styles.link, { color: theme.primary }]}>Open map</Text></Pressable></View>
-    <View style={styles.heatmapGrid}>{heatmapCells.map((cell) => { const isHigh = cell.value >= 85; return <View key={cell.label} style={[styles.heatCell, { backgroundColor: isHigh ? theme.dangerSoft : theme.primarySoft, borderColor: isHigh ? `${theme.danger}55` : theme.border }]}><Text style={[styles.heatLabel, { color: theme.textSecondary }]}>{cell.label}</Text><Text style={[styles.heatValue, { color: isHigh ? theme.danger : theme.primary }]}>{cell.value}%</Text><View style={[styles.heatBarTrack, { backgroundColor: theme.surface }]}><View style={[styles.heatBar, { width: `${cell.value}%`, backgroundColor: isHigh ? theme.danger : theme.primary }]} /></View></View>; })}</View>
-
-    <View style={styles.sectionHeader}><View><Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Route comparison</Text><Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>Typical travel time by corridor</Text></View></View>
-    <View style={[styles.chartCard, { backgroundColor: theme.surface, borderColor: theme.border }]}><MiniBarChart data={routeComparison} color={theme.secondary} /></View>
 
     <View style={[styles.routeCta, { backgroundColor: theme.surface, borderColor: theme.border }]}><View style={[styles.routeIcon, { backgroundColor: theme.secondarySoft }]}><MaterialCommunityIcons name="routes" color={theme.secondary} size={22} /></View><View style={styles.routeCopy}><Text style={[styles.routeTitle, { color: theme.textPrimary }]}>Plan a live route</Text><Text style={[styles.routeBody, { color: theme.textSecondary }]}>Compare alternatives with current matched-road traffic.</Text></View><Pressable accessibilityRole="button" onPress={() => router.push('/route-intelligence')} style={[styles.routeButton, { backgroundColor: theme.primary }]}><MaterialCommunityIcons name="arrow-top-right" color="#fff" size={19} /></Pressable></View>
     <View style={[styles.routeCta, { backgroundColor: theme.surface, borderColor: theme.border }]}><View style={[styles.routeIcon, { backgroundColor: theme.warningSoft }]}><MaterialCommunityIcons name="road-variant" color={theme.warning} size={22} /></View><View style={styles.routeCopy}><Text style={[styles.routeTitle, { color: theme.textPrimary }]}>Road works & advisories</Text><Text style={[styles.routeBody, { color: theme.textSecondary }]}>Check planned maintenance, closures, and diversions.</Text></View><Pressable accessibilityRole="button" onPress={() => router.push('/government-policy')} style={[styles.routeButton, { backgroundColor: theme.primary }]}><MaterialCommunityIcons name="arrow-top-right" color="#fff" size={19} /></Pressable></View>
 
-    <AppButton label="View detailed traffic insights" variant="outline" onPress={() => router.push('/traffic-insights')} />
   </Screen>;
 }
 
