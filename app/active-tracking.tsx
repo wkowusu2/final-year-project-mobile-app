@@ -8,6 +8,7 @@ import { spacing } from '@/src/constants/design';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
 import { useLocationTracking } from '@/src/hooks/useLocationTracking';
 import { useNetworkStatus } from '@/src/hooks/useNetworkStatus';
+import { api, CurrentRoadResponse } from '@/src/services/api';
 import { getCurrentLocation } from '@/src/services/locationService';
 
 const fallbackRegion = { latitude: 5.6037, longitude: -0.187, latitudeDelta: 0.08, longitudeDelta: 0.08 };
@@ -28,6 +29,8 @@ function formatDuration(startedAt: string | undefined, now: number) {
   return `${hours}:${minutes}:${remaining}`;
 }
 
+type CurrentRoad = NonNullable<CurrentRoadResponse['data']>['road'];
+
 export default function ActiveTrackingScreen() {
   const theme = useAppTheme();
   const { isOnline } = useNetworkStatus();
@@ -36,6 +39,7 @@ export default function ActiveTrackingScreen() {
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(true);
+  const [roadCondition, setRoadCondition] = useState<CurrentRoad>(null);
   const mapRef = useRef<MapView | null>(null);
 
   const centerOn = useCallback((coordinate: LatLng, latitudeDelta = 0.018) => {
@@ -73,6 +77,15 @@ export default function ActiveTrackingScreen() {
     setUserLocation(coordinate);
     centerOn(coordinate);
   }, [centerOn, state?.latestPoint]);
+
+  useEffect(() => {
+    if (state?.lifecycle !== 'active') { setRoadCondition(null); return; }
+    let cancelled = false;
+    const load = async () => { try { const response = await api.getCurrentRoad(); if (!cancelled && response.success) setRoadCondition(response.data?.road ?? null); } catch { /* Optional live-road context. */ } };
+    void load();
+    const timer = setInterval(() => void load(), 15_000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [state?.lifecycle, state?.session.id]);
 
   const latestPoint = state?.latestPoint;
   const mapCoordinate = latestPoint ? { latitude: latestPoint.latitude, longitude: latestPoint.longitude } : userLocation;
@@ -163,6 +176,7 @@ export default function ActiveTrackingScreen() {
           <Text numberOfLines={1} style={[styles.status, { color: error || locationError ? theme.danger : theme.textSecondary }]}>{gpsDetail}</Text>
         </View>
       </Card>
+      <RoadConditions condition={roadCondition} />
 
       <View style={styles.actions}>
         {!state && <PrimaryAction label="Start tracking" icon="navigation" loading={loading} onPress={() => void startTracking()} color={theme.primary} />}
@@ -175,6 +189,14 @@ export default function ActiveTrackingScreen() {
       </View>
     </Screen>
   );
+}
+
+function RoadConditions({ condition }: { condition: CurrentRoad }) {
+  const theme = useAppTheme();
+  const tone = condition?.trafficLevel === 'free' ? theme.success : condition?.trafficLevel === 'moderate' ? theme.warning : condition?.trafficLevel === 'heavy' || condition?.trafficLevel === 'severe' ? theme.danger : theme.textSecondary;
+  const label = condition?.trafficLevel === 'unknown' || !condition ? 'Waiting for road match' : `${condition.trafficLevel} traffic`;
+  const notices = (condition?.advisoryCount ?? 0) + (condition?.incidentCount ?? 0);
+  return <Card style={styles.roadConditions}><View style={styles.roadConditionsTop}><View style={[styles.roadConditionsIcon, { backgroundColor: `${tone}22` }]}><MaterialCommunityIcons color={tone} name="road-variant" size={20} /></View><View style={styles.roadConditionsCopy}><Text style={[styles.roadConditionsEyebrow, { color: theme.textSecondary }]}>ROAD CONDITIONS AHEAD</Text><Text numberOfLines={1} style={[styles.roadConditionsTitle, { color: theme.textPrimary }]}>{condition?.roadName ?? 'Matching your current road…'}</Text></View><View style={[styles.trafficPill, { backgroundColor: `${tone}20` }]}><View style={[styles.trafficDot, { backgroundColor: tone }]} /><Text style={[styles.trafficPillText, { color: tone }]}>{label}</Text></View></View><Text style={[styles.roadConditionsDetail, { color: theme.textSecondary }]}>{condition?.medianSpeedKph == null ? 'Traffic appears after recent matched GPS samples are available.' : `${Math.round(condition.medianSpeedKph)} km/h median speed from ${condition.sampleCount} recent matched points.`}</Text>{notices > 0 && <View style={[styles.roadNotice, { backgroundColor: theme.warningSoft }]}><MaterialCommunityIcons color={theme.warning} name="alert-outline" size={17} /><Text style={[styles.roadNoticeText, { color: theme.textPrimary }]}>{notices} active road notice{notices === 1 ? '' : 's'} on this road</Text></View>}</Card>;
 }
 
 function DriveMetric({ icon, label, value, color }: { icon: string; label: string; value: string; color: string }) {
@@ -208,6 +230,7 @@ const styles = StyleSheet.create({
   liveText: { fontSize: 12, fontWeight: '800' },
   centerButton: { position: 'absolute', right: 22, top: 22, width: 46, height: 46, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   dashboardOverlay: { borderRadius: 22, padding: 14, gap: 13 },
+  roadConditions: { borderRadius: 22, padding: 14, gap: 9 }, roadConditionsTop: { flexDirection: 'row', alignItems: 'center', gap: 10 }, roadConditionsIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, roadConditionsCopy: { flex: 1 }, roadConditionsEyebrow: { fontSize: 9, fontWeight: '900', letterSpacing: .8 }, roadConditionsTitle: { fontSize: 15, fontWeight: '900', marginTop: 3 }, trafficPill: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 5 }, trafficDot: { width: 6, height: 6, borderRadius: 3 }, trafficPillText: { fontSize: 10, fontWeight: '900', textTransform: 'capitalize' }, roadConditionsDetail: { fontSize: 12, lineHeight: 17, fontWeight: '600' }, roadNotice: { borderRadius: 12, padding: 9, flexDirection: 'row', alignItems: 'center', gap: 7 }, roadNoticeText: { flex: 1, fontSize: 11, lineHeight: 16, fontWeight: '700' },
   driveHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   driveIcon: { width: 42, height: 42, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   driveCopy: { flex: 1, gap: 1 },

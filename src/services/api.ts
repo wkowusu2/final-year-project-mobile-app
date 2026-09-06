@@ -39,6 +39,12 @@ type TrackingPointsResponse = {
   error: string | null;
 };
 
+export type CurrentRoadResponse = {
+  success: boolean;
+  data: { road: { osmId: string; roadName: string; medianSpeedKph: number | null; sampleCount: number; trafficLevel: 'free' | 'moderate' | 'heavy' | 'severe' | 'unknown'; advisoryCount: number; incidentCount: number } | null } | null;
+  error: string | null;
+};
+
 type ApiError = Error & { status?: number };
 
 type RequestOptions = RequestInit & {
@@ -345,6 +351,9 @@ export const api = {
     return request<TrackingSessionResponse>("/tracking/sessions/active", {
       requiresAuth: true,
     });
+  },
+  getCurrentRoad() {
+    return request<CurrentRoadResponse>('/tracking/current-road', { requiresAuth: true });
   },
   sendTrackingPoints(sessionId: string, points: TrackingPoint[]) {
     return request<TrackingPointsResponse>(
