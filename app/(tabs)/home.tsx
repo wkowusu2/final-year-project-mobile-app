@@ -37,7 +37,7 @@ const quickActions = [
     label: "Insights",
     detail: "Your journeys",
     icon: "chart-box-outline",
-    route: "/traffic-insights",
+    route: "/(tabs)/insights",
     color: "#078B7C",
     background: "#E4F8F5",
   },
