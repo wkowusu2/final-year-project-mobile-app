@@ -11,12 +11,18 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { radius, shadows, spacing, typography } from '@/src/constants/design';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
 
 export function Screen({ children, scrollable = false, style }: PropsWithChildren<{ scrollable?: boolean; style?: StyleProp<ViewStyle> }>) {
   const theme = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const safeAreaStyle = {
+    paddingTop: insets.top + spacing.xl,
+    paddingBottom: insets.bottom + spacing.xxxl,
+  };
 
   if (scrollable) {
     return (
@@ -25,6 +31,7 @@ export function Screen({ children, scrollable = false, style }: PropsWithChildre
           styles.screen,
           { backgroundColor: theme.background },
           style,
+          safeAreaStyle,
         ]}
         showsVerticalScrollIndicator={false}>
         {children}
@@ -32,7 +39,7 @@ export function Screen({ children, scrollable = false, style }: PropsWithChildre
     );
   }
 
-  return <View style={[styles.screen, { backgroundColor: theme.background }, style]}>{children}</View>;
+  return <View style={[styles.screen, { backgroundColor: theme.background }, style, safeAreaStyle]}>{children}</View>;
 }
 
 export function AppHeader({

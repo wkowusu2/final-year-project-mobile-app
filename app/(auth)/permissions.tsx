@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const permissionItems = [
   {
@@ -56,6 +57,7 @@ const colors = {
 };
 
 export default function PermissionsScreen() {
+  const insets = useSafeAreaInsets();
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 
   const selectedCount = selectedPermissions.length;
@@ -72,7 +74,7 @@ export default function PermissionsScreen() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+    <View style={[styles.screen, { backgroundColor: colors.background, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 18 }]}>
       <View style={styles.topIcon}>
         <View style={styles.topIconBase}>
           <View style={[styles.topIconBlend, { backgroundColor: '#5B21F0' }]} />

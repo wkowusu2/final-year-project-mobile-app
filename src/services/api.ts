@@ -1,7 +1,8 @@
-import { router } from 'expo-router';
+import { router } from "expo-router";
 
-import { API_BASE_URL } from '@/src/constants/api';
-import { storageService } from '@/src/services/storageService';
+import { API_BASE_URL } from "@/src/constants/api";
+import { storageService } from "@/src/services/storageService";
+import { RoadAdvisoriesResponse } from "@/src/types/advisories";
 import {
   DoneOnboardingResponse,
   DriverRegistrationInput,
@@ -10,8 +11,7 @@ import {
   SendOtpResponse,
   VerifyOtpPayload,
   VerifyOtpResponse,
-} from '@/src/types/driver';
-import { MapTrafficResponse, RoadBounds, RoadsResponse } from '@/src/types/map';
+} from "@/src/types/driver";
 import {
   ConfirmIncidentResponse,
   CreateIncidentInput,
@@ -22,10 +22,10 @@ import {
   MapIncidentsResponse,
   ProfileSummaryResponse,
   RewardsResponse,
-} from '@/src/types/home';
-import { TrackingPoint, TrackingSession } from '@/src/types/tracking';
-import { RouteIntelligenceResponse } from '@/src/types/routes';
-import { RoadAdvisoriesResponse } from '@/src/types/advisories';
+} from "@/src/types/home";
+import { MapTrafficResponse, RoadBounds, RoadsResponse } from "@/src/types/map";
+import { RouteIntelligenceResponse } from "@/src/types/routes";
+import { TrackingPoint, TrackingSession } from "@/src/types/tracking";
 
 type TrackingSessionResponse = {
   success: boolean;
@@ -53,7 +53,7 @@ async function expireSession() {
   if (!sessionExpiryPromise) {
     sessionExpiryPromise = (async () => {
       await storageService.logout();
-      router.replace('/(auth)/login');
+      router.replace("/(auth)/login");
     })().finally(() => {
       sessionExpiryPromise = null;
     });
@@ -71,7 +71,8 @@ async function parseResponse(response: Response): Promise<unknown> {
   try {
     return JSON.parse(raw) as unknown;
   } catch {
-    const contentType = response.headers.get('content-type') ?? 'an unknown content type';
+    const contentType =
+      response.headers.get("content-type") ?? "an unknown content type";
     const source = response.url || API_BASE_URL;
     throw new Error(
       `Expected a JSON API response from ${source}, but received ${contentType} (HTTP ${response.status}). Check API_BASE_URL and the backend route.`,
@@ -80,29 +81,38 @@ async function parseResponse(response: Response): Promise<unknown> {
 }
 
 function getErrorMessage(data: unknown, status: number) {
-  return typeof data === 'object' && data !== null && 'error' in data && typeof data.error === 'string'
+  return typeof data === "object" &&
+    data !== null &&
+    "error" in data &&
+    typeof data.error === "string"
     ? data.error
-    : typeof data === 'object' && data !== null && 'message' in data && typeof data.message === 'string'
+    : typeof data === "object" &&
+        data !== null &&
+        "message" in data &&
+        typeof data.message === "string"
       ? data.message
       : `API request failed with status ${status}`;
 }
 
 async function refreshAuthTokensInternal() {
-  const [refreshToken, userId] = await Promise.all([storageService.getRefreshToken(), storageService.getUserId()]);
+  const [refreshToken, userId] = await Promise.all([
+    storageService.getRefreshToken(),
+    storageService.getUserId(),
+  ]);
   if (!refreshToken || !userId) {
     await expireSession();
-    throw new Error('Session expired');
+    throw new Error("Session expired");
   }
 
   const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken, userId }),
   });
   const data = (await parseResponse(response)) as RefreshTokensResponse | null;
   if (!response.ok || !data?.success || !data.data) {
     await expireSession();
-    throw new Error(data?.error ?? 'Session expired');
+    throw new Error(data?.error ?? "Session expired");
   }
 
   await storageService.saveAuthTokens({
@@ -127,11 +137,19 @@ function refreshAuthTokens() {
   return refreshPromise;
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { requiresAuth = false, retryOnAuthFailure = true, ...fetchOptions } = options;
-  const isFormData = typeof FormData !== 'undefined' && fetchOptions.body instanceof FormData;
+async function request<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
+  const {
+    requiresAuth = false,
+    retryOnAuthFailure = true,
+    ...fetchOptions
+  } = options;
+  const isFormData =
+    typeof FormData !== "undefined" && fetchOptions.body instanceof FormData;
   const headers = {
-    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(fetchOptions.headers ?? {}),
   } as Record<string, string>;
 
@@ -140,7 +158,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
     if (!accessToken) {
       await expireSession();
-      throw new Error('Session expired');
+      throw new Error("Session expired");
     }
 
     headers.Authorization = `Bearer ${accessToken}`;
@@ -158,7 +176,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     error.status = response.status;
 
     if (requiresAuth && retryOnAuthFailure && response.status === 401) {
-      console.log('Protected request returned 401', { path, status: response.status });
+      console.log("Protected request returned 401", {
+        path,
+        status: response.status,
+      });
       const accessToken = await refreshAuthTokens();
       return request<T>(path, {
         ...fetchOptions,
@@ -173,7 +194,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
     if (requiresAuth && response.status === 401) {
       await expireSession();
-      throw new Error('Session expired');
+      throw new Error("Session expired");
     }
 
     throw error;
@@ -184,72 +205,86 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
 export const api = {
   sendOtp(phone: string) {
-    return request<SendOtpResponse>('/auth/send-otp', {
-      method: 'POST',
+    return request<SendOtpResponse>("/auth/send-otp", {
+      method: "POST",
       body: JSON.stringify({ phone }),
     });
   },
   verifyOtp(payload: VerifyOtpPayload) {
-    return request<VerifyOtpResponse>('/auth/verify-otp', {
-      method: 'POST',
+    return request<VerifyOtpResponse>("/auth/verify-otp", {
+      method: "POST",
       body: JSON.stringify(payload),
     });
   },
   registerDriver(input: DriverRegistrationInput) {
-    return request<RegisterDriverResponse>('/driver-profiles', {
-      method: 'POST',
+    return request<RegisterDriverResponse>("/driver-profiles", {
+      method: "POST",
       requiresAuth: true,
       body: JSON.stringify(input),
     });
   },
   completeOnboarding() {
-    return request<DoneOnboardingResponse>('/driver-profiles/done-onboarding', {
-      method: 'PATCH',
+    return request<DoneOnboardingResponse>("/driver-profiles/done-onboarding", {
+      method: "PATCH",
       requiresAuth: true,
     });
   },
   getHomeDashboard() {
-    return request<HomeDashboardResponse>('/driver-profiles/home', {
+    return request<HomeDashboardResponse>("/driver-profiles/home", {
       requiresAuth: true,
     });
   },
   getProfileSummary() {
-    return request<ProfileSummaryResponse>('/driver-profiles/summary', { requiresAuth: true });
+    return request<ProfileSummaryResponse>("/driver-profiles/summary", {
+      requiresAuth: true,
+    });
   },
   getRewards() {
-    return request<RewardsResponse>('/driver-profiles/rewards', { requiresAuth: true });
+    return request<RewardsResponse>("/driver-profiles/rewards", {
+      requiresAuth: true,
+    });
   },
   createIncident(input: CreateIncidentInput) {
     const formData = new FormData();
-    formData.append('type', input.type);
-    formData.append('description', input.description);
-    formData.append('severity', input.severity);
-    formData.append('roadName', input.roadName);
-    formData.append('city', input.city);
-    formData.append('latitude', String(input.latitude));
-    formData.append('longitude', String(input.longitude));
-    if (input.photo) formData.append('photo', input.photo as unknown as Blob);
-    return request<CreateIncidentResponse>('/incidents', {
-      method: 'POST',
+    formData.append("type", input.type);
+    formData.append("description", input.description);
+    formData.append("severity", input.severity);
+    formData.append("roadName", input.roadName);
+    formData.append("city", input.city);
+    formData.append("latitude", String(input.latitude));
+    formData.append("longitude", String(input.longitude));
+    if (input.photo) formData.append("photo", input.photo as unknown as Blob);
+    return request<CreateIncidentResponse>("/incidents", {
+      method: "POST",
       requiresAuth: true,
       body: formData,
     });
   },
   getMyIncidents() {
-    return request<IncidentsResponse>('/incidents', { requiresAuth: true });
+    return request<IncidentsResponse>("/incidents", { requiresAuth: true });
   },
   getIncident(incidentId: string) {
-    return request<IncidentDetailResponse>(`/incidents/${incidentId}`, { requiresAuth: true });
-  },
-  confirmIncident(incidentId: string) {
-    return request<ConfirmIncidentResponse>(`/incidents/${incidentId}/confirm`, {
-      method: 'POST',
+    return request<IncidentDetailResponse>(`/incidents/${incidentId}`, {
       requiresAuth: true,
     });
   },
+  confirmIncident(incidentId: string) {
+    return request<ConfirmIncidentResponse>(
+      `/incidents/${incidentId}/confirm`,
+      {
+        method: "POST",
+        requiresAuth: true,
+      },
+    );
+  },
   getMapIncidents(bounds: RoadBounds, signal?: AbortSignal) {
-    const query = new URLSearchParams(Object.entries(bounds).map(([key, value]) => [key, String(value)]));
-    return request<MapIncidentsResponse>(`/incidents/map?${query}`, { requiresAuth: true, signal });
+    const query = new URLSearchParams(
+      Object.entries(bounds).map(([key, value]) => [key, String(value)]),
+    );
+    return request<MapIncidentsResponse>(`/incidents/map?${query}`, {
+      requiresAuth: true,
+      signal,
+    });
   },
   async getRoads(bounds: RoadBounds, signal?: AbortSignal) {
     const query = new URLSearchParams({
@@ -259,9 +294,11 @@ export const api = {
       north: String(bounds.north),
     });
 
-    console.log('Requesting roads for viewport', bounds);
-    const response = await request<RoadsResponse>(`/map/roads?${query}`, { signal });
-    console.log('Received roads for viewport', {
+    console.log("Requesting roads for viewport", bounds);
+    const response = await request<RoadsResponse>(`/map/roads?${query}`, {
+      signal,
+    });
+    console.log("Received roads for viewport", {
       bounds,
       featureCount: response.data?.features.length ?? 0,
       truncated: response.data?.truncated ?? false,
@@ -270,45 +307,63 @@ export const api = {
     return response;
   },
   getMapTraffic(bounds: RoadBounds, signal?: AbortSignal) {
-    const query = new URLSearchParams(Object.entries(bounds).map(([key, value]) => [key, String(value)]));
-    return request<MapTrafficResponse>(`/map/traffic?${query}`, { requiresAuth: true, signal });
+    const query = new URLSearchParams(
+      Object.entries(bounds).map(([key, value]) => [key, String(value)]),
+    );
+    return request<MapTrafficResponse>(`/map/traffic?${query}`, {
+      requiresAuth: true,
+      signal,
+    });
   },
-  getRouteIntelligence(origin: { latitude: number; longitude: number }, destination: { latitude: number; longitude: number }) {
+  getRouteIntelligence(
+    origin: { latitude: number; longitude: number },
+    destination: { latitude: number; longitude: number },
+  ) {
     const query = new URLSearchParams({
       originLat: String(origin.latitude),
       originLng: String(origin.longitude),
       destinationLat: String(destination.latitude),
       destinationLng: String(destination.longitude),
     });
-    return request<RouteIntelligenceResponse>(`/routes/intelligence?${query}`, { requiresAuth: true });
+    return request<RouteIntelligenceResponse>(`/routes/intelligence?${query}`, {
+      requiresAuth: true,
+    });
   },
   getRoadAdvisories() {
-    return request<RoadAdvisoriesResponse>('/road-advisories', { requiresAuth: true });
+    return request<RoadAdvisoriesResponse>("/road-advisories", {
+      requiresAuth: true,
+    });
   },
   startTrackingSession(startedAt: string) {
-    return request<TrackingSessionResponse>('/tracking/sessions', {
-      method: 'POST',
+    return request<TrackingSessionResponse>("/tracking/sessions", {
+      method: "POST",
       requiresAuth: true,
       body: JSON.stringify({ startedAt }),
     });
   },
   getActiveTrackingSession() {
-    return request<TrackingSessionResponse>('/tracking/sessions/active', {
+    return request<TrackingSessionResponse>("/tracking/sessions/active", {
       requiresAuth: true,
     });
   },
   sendTrackingPoints(sessionId: string, points: TrackingPoint[]) {
-    return request<TrackingPointsResponse>(`/tracking/sessions/${sessionId}/points`, {
-      method: 'POST',
-      requiresAuth: true,
-      body: JSON.stringify({ points }),
-    });
+    return request<TrackingPointsResponse>(
+      `/tracking/sessions/${sessionId}/points`,
+      {
+        method: "POST",
+        requiresAuth: true,
+        body: JSON.stringify({ points }),
+      },
+    );
   },
   completeTrackingSession(sessionId: string, endedAt: string) {
-    return request<TrackingSessionResponse>(`/tracking/sessions/${sessionId}/complete`, {
-      method: 'POST',
-      requiresAuth: true,
-      body: JSON.stringify({ endedAt }),
-    });
+    return request<TrackingSessionResponse>(
+      `/tracking/sessions/${sessionId}/complete`,
+      {
+        method: "POST",
+        requiresAuth: true,
+        body: JSON.stringify({ endedAt }),
+      },
+    );
   },
 };

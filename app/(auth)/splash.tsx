@@ -1,17 +1,19 @@
 import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { palette } from '@/src/constants/colors';
 
 export default function SplashScreen() {
+  const insets = useSafeAreaInsets();
   useEffect(() => {
     const timeout = setTimeout(() => router.replace('/(auth)/onboarding'), 1100);
     return () => clearTimeout(timeout);
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 80, paddingBottom: insets.bottom + 48 }]}>
       <View style={styles.brandBlock}>
         <View style={styles.logoWrap}>
           <View style={styles.logoCircle}>

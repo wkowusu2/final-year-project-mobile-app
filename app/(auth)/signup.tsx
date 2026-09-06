@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/src/services/api";
 import { storageService } from "@/src/services/storageService";
@@ -29,6 +30,7 @@ function formatGhanaPhone(value: string) {
 }
 
 export default function SignUpScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ phone?: string }>();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -112,7 +114,7 @@ export default function SignUpScreen() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+    <View style={[styles.screen, { backgroundColor: colors.background, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
       <View style={styles.topIcon}>
         <View style={styles.topIconBase}>
           <View

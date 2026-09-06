@@ -1,10 +1,12 @@
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
 
 export default function TabsLayout() {
   const theme = useAppTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -13,8 +15,10 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: theme.tabBar,
           borderTopColor: theme.border,
-          height: 78,
-          paddingBottom: 12,
+          // Reserve the device navigation/gesture area. A fixed-height tab
+          // bar otherwise lets Android system controls overlap its labels.
+          height: 66 + insets.bottom,
+          paddingBottom: Math.max(insets.bottom, 12),
           paddingTop: 8,
         },
         tabBarActiveTintColor: theme.primary,
