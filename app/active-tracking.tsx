@@ -8,7 +8,7 @@ import { spacing } from '@/src/constants/design';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
 import { useLocationTracking } from '@/src/hooks/useLocationTracking';
 import { useNetworkStatus } from '@/src/hooks/useNetworkStatus';
-import { api, CurrentRoadResponse } from '@/src/services/api';
+import { api, CurrentRoadResponse, SimulationStatusResponse } from '@/src/services/api';
 import { getCurrentLocation } from '@/src/services/locationService';
 
 const fallbackRegion = { latitude: 5.6037, longitude: -0.187, latitudeDelta: 0.08, longitudeDelta: 0.08 };
@@ -30,6 +30,7 @@ function formatDuration(startedAt: string | undefined, now: number) {
 }
 
 type CurrentRoad = NonNullable<CurrentRoadResponse['data']>['road'];
+type SimulationStatus = SimulationStatusResponse['data'];
 
 export default function ActiveTrackingScreen() {
   const theme = useAppTheme();
@@ -40,11 +41,20 @@ export default function ActiveTrackingScreen() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(true);
   const [roadCondition, setRoadCondition] = useState<CurrentRoad>(null);
+  const [simulation, setSimulation] = useState<SimulationStatus>(null);
+  const [showSimulationRoads, setShowSimulationRoads] = useState(false);
   const mapRef = useRef<MapView | null>(null);
+  const isActive = state?.lifecycle === 'active';
 
   const centerOn = useCallback((coordinate: LatLng, latitudeDelta = 0.018) => {
     mapRef.current?.animateToRegion({ ...coordinate, latitudeDelta, longitudeDelta: latitudeDelta }, 500);
   }, []);
+
+  const viewSimulation = useCallback(() => {
+    if (!simulation?.running) return;
+    setShowSimulationRoads(true);
+    centerOn(simulation.center, 0.09);
+  }, [centerOn, simulation]);
 
   const locateUser = useCallback(async () => {
     setIsLocating(true);
@@ -87,9 +97,26 @@ export default function ActiveTrackingScreen() {
     return () => { cancelled = true; clearInterval(timer); };
   }, [state?.lifecycle, state?.session.id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const response = await api.getSimulationStatus();
+        if (!cancelled && response.success) setSimulation(response.data);
+      } catch {
+        // The simulation card is optional presentation context.
+      }
+    };
+    void load();
+    if (!isActive) return () => { cancelled = true; };
+    const timer = setInterval(() => void load(), 15_000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [isActive]);
+
   const latestPoint = state?.latestPoint;
   const mapCoordinate = latestPoint ? { latitude: latestPoint.latitude, longitude: latestPoint.longitude } : userLocation;
-  const isActive = state?.lifecycle === 'active';
+  const simulationRoads = Array.isArray(simulation?.roads) ? simulation.roads : [];
+  const simulationCenter = simulation?.center ?? { latitude: 6.6752, longitude: -1.5716 };
   const isStopPending = state?.lifecycle === 'stopPending';
   const isPaused = state?.lifecycle === 'pausedOffline';
   const speedKmh = latestPoint?.speedMps == null ? 'Waiting' : `${Math.round(latestPoint.speedMps * 3.6)} km/h`;
@@ -119,6 +146,11 @@ export default function ActiveTrackingScreen() {
           showsMyLocationButton={false}
           style={styles.map}>
           {state && state.route.length >= 2 && <Polyline coordinates={state.route} strokeColor={theme.primary} strokeWidth={6} />}
+          {showSimulationRoads && simulationRoads.map((road, index) => <Polyline key={`simulation-road-${index}`} coordinates={road.coordinates.map(([longitude, latitude]) => ({ latitude, longitude }))} strokeColor={trafficColor(road.trafficLevel)} strokeWidth={7} />)}
+          {showSimulationRoads && simulationRoads.filter((road) => road.hasIncident).map((road, index) => {
+            const [longitude, latitude] = road.coordinates[Math.floor(road.coordinates.length / 2)] ?? [simulationCenter.longitude, simulationCenter.latitude];
+            return <Marker key={`simulation-incident-${index}`} coordinate={{ latitude, longitude }} title="Simulated traffic incident" description="Admin presentation simulation"><View style={styles.simulationMarker}><MaterialCommunityIcons color="#FFFFFF" name="alert" size={16} /></View></Marker>;
+          })}
           {mapCoordinate && (
             <Marker coordinate={mapCoordinate} title={isActive ? 'Current drive location' : 'Your location'} anchor={{ x: 0.5, y: 0.5 }} style={styles.driverMarkerContainer}>
               <View collapsable={false} style={[styles.driverMarkerHalo, { backgroundColor: isActive ? 'rgba(37, 99, 235, 0.18)' : 'rgba(20, 184, 166, 0.18)' }]}>
@@ -177,6 +209,7 @@ export default function ActiveTrackingScreen() {
         </View>
       </Card>
       <RoadConditions condition={roadCondition} />
+      <SimulationContext simulation={simulation} showingRoads={showSimulationRoads} onView={viewSimulation} />
 
       <View style={styles.actions}>
         {!state && <PrimaryAction label="Start tracking" icon="navigation" loading={loading} onPress={() => void startTracking()} color={theme.primary} />}
@@ -197,6 +230,17 @@ function RoadConditions({ condition }: { condition: CurrentRoad }) {
   const label = condition?.trafficLevel === 'unknown' || !condition ? 'Waiting for road match' : `${condition.trafficLevel} traffic`;
   const notices = (condition?.advisoryCount ?? 0) + (condition?.incidentCount ?? 0);
   return <Card style={styles.roadConditions}><View style={styles.roadConditionsTop}><View style={[styles.roadConditionsIcon, { backgroundColor: `${tone}22` }]}><MaterialCommunityIcons color={tone} name="road-variant" size={20} /></View><View style={styles.roadConditionsCopy}><Text style={[styles.roadConditionsEyebrow, { color: theme.textSecondary }]}>ROAD CONDITIONS AHEAD</Text><Text numberOfLines={1} style={[styles.roadConditionsTitle, { color: theme.textPrimary }]}>{condition?.roadName ?? 'Matching your current road…'}</Text></View><View style={[styles.trafficPill, { backgroundColor: `${tone}20` }]}><View style={[styles.trafficDot, { backgroundColor: tone }]} /><Text style={[styles.trafficPillText, { color: tone }]}>{label}</Text></View></View><Text style={[styles.roadConditionsDetail, { color: theme.textSecondary }]}>{condition?.medianSpeedKph == null ? 'Traffic appears after recent matched GPS samples are available.' : `${Math.round(condition.medianSpeedKph)} km/h median speed from ${condition.sampleCount} recent matched points.`}</Text>{notices > 0 && <View style={[styles.roadNotice, { backgroundColor: theme.warningSoft }]}><MaterialCommunityIcons color={theme.warning} name="alert-outline" size={17} /><Text style={[styles.roadNoticeText, { color: theme.textPrimary }]}>{notices} active road notice{notices === 1 ? '' : 's'} on this road</Text></View>}</Card>;
+}
+
+function trafficColor(level: 'free' | 'moderate' | 'heavy' | 'severe') {
+  return level === 'free' ? '#16A34A' : level === 'moderate' ? '#F59E0B' : level === 'heavy' ? '#EA580C' : '#DC2626';
+}
+
+function SimulationContext({ simulation, showingRoads, onView }: { simulation: SimulationStatus; showingRoads: boolean; onView: () => void }) {
+  const theme = useAppTheme();
+  if (!simulation?.running) return null;
+  const scenario = simulation.scenario === 'rush_hour' ? 'Rush-hour congestion' : simulation.scenario === 'incident' ? 'Incident bottleneck' : 'Normal flow';
+  return <Card style={[styles.simulationCard, { backgroundColor: theme.primarySoft, borderColor: theme.border }]}><View style={styles.simulationTop}><View style={[styles.simulationIcon, { backgroundColor: theme.surface }]}><MaterialCommunityIcons color={theme.primary} name="flask-outline" size={20} /></View><View style={styles.simulationCopy}><Text style={[styles.simulationEyebrow, { color: theme.primary }]}>PRESENTATION SIMULATION ACTIVE</Text><Text style={[styles.simulationTitle, { color: theme.textPrimary }]}>KNUST · {scenario}</Text></View><View style={[styles.simulationLivePill, { backgroundColor: theme.successSoft }]}><View style={[styles.trafficDot, { backgroundColor: theme.success }]} /><Text style={[styles.simulationLiveText, { color: theme.success }]}>Live</Text></View></View><Text style={[styles.simulationDetail, { color: theme.textSecondary }]}>Viewing the same map-matched traffic feed as the admin dashboard: {simulation.driverCount} virtual drivers{simulation.reportId ? ' and a simulated road report' : ''}.</Text><Pressable accessibilityRole="button" onPress={onView} style={({ pressed }) => [styles.simulationMapButton, { backgroundColor: theme.primary, opacity: pressed ? .84 : 1 }]}><MaterialCommunityIcons color="#FFFFFF" name={showingRoads ? 'map-check-outline' : 'map-marker-path'} size={17} /><Text style={styles.simulationMapButtonText}>{showingRoads ? 'Simulation roads shown' : 'View simulation on map'}</Text></Pressable></Card>;
 }
 
 function DriveMetric({ icon, label, value, color }: { icon: string; label: string; value: string; color: string }) {
@@ -222,6 +266,7 @@ const styles = StyleSheet.create({
   screen: { paddingBottom: spacing.xl },
   mapShell: { padding: 8, borderRadius: 26, overflow: 'hidden' },
   map: { width: '100%', height: 320, borderRadius: 20 },
+  simulationMarker: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#DC2626', borderWidth: 3, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   driverMarkerContainer: { width: 32, height: 32 },
   driverMarkerHalo: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   driverMarker: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 4, elevation: 3 },
@@ -231,6 +276,7 @@ const styles = StyleSheet.create({
   centerButton: { position: 'absolute', right: 22, top: 22, width: 46, height: 46, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   dashboardOverlay: { borderRadius: 22, padding: 14, gap: 13 },
   roadConditions: { borderRadius: 22, padding: 14, gap: 9 }, roadConditionsTop: { flexDirection: 'row', alignItems: 'center', gap: 10 }, roadConditionsIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, roadConditionsCopy: { flex: 1 }, roadConditionsEyebrow: { fontSize: 9, fontWeight: '900', letterSpacing: .8 }, roadConditionsTitle: { fontSize: 15, fontWeight: '900', marginTop: 3 }, trafficPill: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 5 }, trafficDot: { width: 6, height: 6, borderRadius: 3 }, trafficPillText: { fontSize: 10, fontWeight: '900', textTransform: 'capitalize' }, roadConditionsDetail: { fontSize: 12, lineHeight: 17, fontWeight: '600' }, roadNotice: { borderRadius: 12, padding: 9, flexDirection: 'row', alignItems: 'center', gap: 7 }, roadNoticeText: { flex: 1, fontSize: 11, lineHeight: 16, fontWeight: '700' },
+  simulationCard: { borderWidth: 1, borderRadius: 22, padding: 14, gap: 9 }, simulationTop: { flexDirection: 'row', alignItems: 'center', gap: 10 }, simulationIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, simulationCopy: { flex: 1 }, simulationEyebrow: { fontSize: 9, fontWeight: '900', letterSpacing: .7 }, simulationTitle: { fontSize: 15, fontWeight: '900', marginTop: 3 }, simulationLivePill: { borderRadius: 99, paddingHorizontal: 9, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 5 }, simulationLiveText: { fontSize: 10, fontWeight: '900' }, simulationDetail: { fontSize: 12, lineHeight: 17, fontWeight: '600' }, simulationMapButton: { minHeight: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 }, simulationMapButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
   driveHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   driveIcon: { width: 42, height: 42, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   driveCopy: { flex: 1, gap: 1 },

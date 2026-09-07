@@ -45,6 +45,25 @@ export type CurrentRoadResponse = {
   error: string | null;
 };
 
+export type SimulationStatusResponse = {
+  success: boolean;
+  data: {
+    running: boolean;
+    scenario: 'normal' | 'rush_hour' | 'incident' | null;
+    startedAt: string | null;
+    driverCount: number;
+    reportId: string | null;
+    center: { latitude: number; longitude: number };
+    roads?: Array<{
+      coordinates: [number, number][];
+      trafficLevel: 'free' | 'moderate' | 'heavy' | 'severe';
+      speedKph: number;
+      hasIncident: boolean;
+    }>;
+  } | null;
+  error: string | null;
+};
+
 type ApiError = Error & { status?: number };
 
 type RequestOptions = RequestInit & {
@@ -354,6 +373,10 @@ export const api = {
   },
   getCurrentRoad() {
     return request<CurrentRoadResponse>('/tracking/current-road', { requiresAuth: true });
+  },
+
+  getSimulationStatus() {
+    return request<SimulationStatusResponse>('/tracking/simulation', { requiresAuth: true });
   },
   sendTrackingPoints(sessionId: string, points: TrackingPoint[]) {
     return request<TrackingPointsResponse>(
