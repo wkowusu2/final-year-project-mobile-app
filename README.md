@@ -1,50 +1,51 @@
-# Welcome to your Expo app 👋
+# RoadPulse Ghana — Driver Mobile Application
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+The RoadPulse Ghana driver application is an Expo and React Native client for collecting voluntary road observations and presenting traffic information to participating drivers.
 
-## Get started
+## Features
 
-1. Install dependencies
+- Phone-number and one-time-password (OTP) authentication
+- Driver profile onboarding
+- Explicit foreground GPS trip tracking and batched point upload
+- Live traffic map and current-road context
+- Incident reporting, confirmation and optional image evidence
+- Road-advisory and traffic-aware route views
 
-   ```bash
-   npm install
-   ```
+## Prerequisites
 
-2. Start the app
+- Node.js and npm
+- Expo Go, an Android/iOS emulator, or a configured development build
+- A reachable RoadPulse backend with PostgreSQL/PostGIS and Valhalla configured
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Setup and run
 
 ```bash
-npm run reset-project
+npm install
+npm start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Use the Expo terminal prompts to open the app on Android, iOS or web. These convenience commands are also available:
 
-## Learn more
+```bash
+npm run android
+npm run ios
+npm run web
+npm run lint
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+## Backend connection
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+The current backend base URL is defined in [`src/constants/api.ts`](src/constants/api.ts). Update `API_BASE_URL` before running on a different computer, emulator or physical device. A physical phone must be able to reach the backend host over the local network; `localhost` on the phone refers to the phone itself, not the development computer.
 
-## Join the community
+The expected backend API prefix is `/api/v1`.
 
-Join our community of developers creating universal apps.
+## Location and privacy
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Tracking begins only when the driver explicitly starts a session. The application requests location access for active tracking and sends accepted observations to the protected backend. Do not use real personal location data in demonstrations or testing without informed participant consent.
+
+## Related projects
+
+- [`../../backend`](../../backend): API, authentication, spatial processing and persistence
+- [`../../admin`](../../admin): authorised traffic-management console
+
+See the repository-level project documentation for architecture, database design and deployment notes.
