@@ -213,7 +213,7 @@ export default function ActiveTrackingScreen() {
       <SimulationContext simulation={simulation} showingRoads={showSimulationRoads} onView={viewSimulation} />
 
       <View style={styles.actions}>
-        {!state && <><PrimaryAction label="Start tracking" icon="navigation" loading={loading} onPress={() => void startTracking()} color={theme.primary} /><PrimaryAction label="Demo: Ayeduase Road" icon="flask-outline" loading={loading} onPress={() => void startDemoTracking()} color={theme.secondary} /></>}
+        {!state && <View style={styles.startActions}><PrimaryAction label="Start tracking" icon="navigation" loading={loading} onPress={() => void startTracking()} color={theme.primary} /><PrimaryAction label="Demo: Ayeduase Road" icon="flask-outline" loading={loading} onPress={() => void startDemoTracking()} color={theme.secondary} /></View>}
         {isPaused && <PrimaryAction label="Resume tracking" icon="play" loading={loading} onPress={() => void resumeTracking()} color={theme.primary} />}
         {(isActive || isStopPending) && <PrimaryAction label={isStopPending ? 'Retry stop' : 'Stop tracking'} icon="stop" loading={loading} onPress={() => void stopTracking()} color={theme.danger} />}
       </View>
@@ -298,6 +298,7 @@ const styles = StyleSheet.create({
   privacyIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   privacyText: { flex: 1, fontSize: 11, lineHeight: 16, fontWeight: '600' },
   actions: { minHeight: 58 },
+  startActions: { gap: 12 },
   primaryAction: { minHeight: 58, borderRadius: 19, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 9 },
   primaryActionText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
 });
