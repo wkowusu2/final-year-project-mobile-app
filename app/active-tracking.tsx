@@ -35,7 +35,7 @@ type SimulationStatus = SimulationStatusResponse['data'];
 export default function ActiveTrackingScreen() {
   const theme = useAppTheme();
   const { isOnline } = useNetworkStatus();
-  const { state, gpsStatus, error, loading, startTracking, resumeTracking, stopTracking } = useLocationTracking(isOnline);
+  const { state, gpsStatus, error, loading, startTracking, startDemoTracking, resumeTracking, stopTracking } = useLocationTracking(isOnline);
   const [now, setNow] = useState(Date.now());
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -45,6 +45,7 @@ export default function ActiveTrackingScreen() {
   const [showSimulationRoads, setShowSimulationRoads] = useState(false);
   const mapRef = useRef<MapView | null>(null);
   const isActive = state?.lifecycle === 'active';
+  const isDemo = state?.source === 'demo';
 
   const centerOn = useCallback((coordinate: LatLng, latitudeDelta = 0.018) => {
     mapRef.current?.animateToRegion({ ...coordinate, latitudeDelta, longitudeDelta: latitudeDelta }, 500);
@@ -121,9 +122,9 @@ export default function ActiveTrackingScreen() {
   const isPaused = state?.lifecycle === 'pausedOffline';
   const speedKmh = latestPoint?.speedMps == null ? 'Waiting' : `${Math.round(latestPoint.speedMps * 3.6)} km/h`;
   const accuracy = latestPoint?.accuracyMeters == null ? 'Waiting' : `${Math.round(latestPoint.accuracyMeters)} m`;
-  const trackingLabel = isActive ? 'Drive in progress' : isPaused ? 'Tracking paused' : isStopPending ? 'Finishing drive' : 'Ready to drive';
+  const trackingLabel = isActive ? isDemo ? 'Ayeduase demo in progress' : 'Drive in progress' : isPaused ? 'Tracking paused' : isStopPending ? 'Finishing drive' : 'Ready to drive';
   const statusDetail = isActive
-    ? 'Your route is being recorded securely.'
+    ? isDemo ? 'Simulated GPS points are moving along Ayeduase Road.' : 'Your route is being recorded securely.'
     : isPaused
       ? 'Reconnect to continue recording this drive.'
       : isStopPending
@@ -169,7 +170,7 @@ export default function ActiveTrackingScreen() {
 
         <View style={[styles.liveBadge, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           {isLocating ? <ActivityIndicator color={theme.primary} size="small" /> : <View style={[styles.liveDot, { backgroundColor: locationError ? theme.danger : theme.success }]} />}
-          <Text style={[styles.liveText, { color: theme.textPrimary }]}>{isLocating ? 'Finding your location' : locationError ? 'Location unavailable' : 'Live location'}</Text>
+          <Text style={[styles.liveText, { color: theme.textPrimary }]}>{isLocating ? 'Finding your location' : locationError ? 'Location unavailable' : isDemo ? 'Ayeduase demo location' : 'Live location'}</Text>
         </View>
         <Pressable
           accessibilityLabel="Center on my location"
@@ -212,7 +213,7 @@ export default function ActiveTrackingScreen() {
       <SimulationContext simulation={simulation} showingRoads={showSimulationRoads} onView={viewSimulation} />
 
       <View style={styles.actions}>
-        {!state && <PrimaryAction label="Start tracking" icon="navigation" loading={loading} onPress={() => void startTracking()} color={theme.primary} />}
+        {!state && <><PrimaryAction label="Start tracking" icon="navigation" loading={loading} onPress={() => void startTracking()} color={theme.primary} /><PrimaryAction label="Demo: Ayeduase Road" icon="flask-outline" loading={loading} onPress={() => void startDemoTracking()} color={theme.secondary} /></>}
         {isPaused && <PrimaryAction label="Resume tracking" icon="play" loading={loading} onPress={() => void resumeTracking()} color={theme.primary} />}
         {(isActive || isStopPending) && <PrimaryAction label={isStopPending ? 'Retry stop' : 'Stop tracking'} icon="stop" loading={loading} onPress={() => void stopTracking()} color={theme.danger} />}
       </View>

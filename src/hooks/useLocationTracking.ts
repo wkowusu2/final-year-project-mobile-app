@@ -1,11 +1,53 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
+import * as Crypto from 'expo-crypto';
 
 import { GPS_BATCH_SIZE, GPS_MAX_ACCURACY_METERS, GPS_MIN_MOVEMENT_METERS } from '@/src/constants/api';
 import { api } from '@/src/services/api';
 import { getCurrentLocationFix, toGpsPoint, watchForegroundLocation } from '@/src/services/locationService';
 import { storageService } from '@/src/services/storageService';
 import { ActiveTrackingState, GpsStatus, TrackingPoint } from '@/src/types/tracking';
+
+const DEMO_POINT_INTERVAL_MS = 2_000;
+
+// A short, repeatable corridor on Ayeduase Road, Kumasi. The first point of a
+// demo is always the driver's real current location; these points then carry
+// the marker along the road for a presentation-safe simulated drive.
+const AYEDUASE_ROAD_ROUTE = [
+  { latitude: 6.67566, longitude: -1.56361 },
+  { latitude: 6.67571, longitude: -1.56295 },
+  { latitude: 6.67576, longitude: -1.56229 },
+  { latitude: 6.67581, longitude: -1.56163 },
+  { latitude: 6.67586, longitude: -1.56097 },
+  { latitude: 6.67590, longitude: -1.56031 },
+  { latitude: 6.67591, longitude: -1.55965 },
+  { latitude: 6.67592, longitude: -1.55890 },
+  { latitude: 6.67588, longitude: -1.55824 },
+  { latitude: 6.67583, longitude: -1.55758 },
+  { latitude: 6.67578, longitude: -1.55692 },
+] as const;
+
+function buildAyeduaseDemoPath() {
+  const points: { latitude: number; longitude: number }[] = [];
+  for (let index = 0; index < AYEDUASE_ROAD_ROUTE.length - 1; index += 1) {
+    const start = AYEDUASE_ROAD_ROUTE[index];
+    const end = AYEDUASE_ROAD_ROUTE[index + 1];
+    // Approximately 22 m per two-second update gives a visibly smooth marker
+    // while retaining a credible 40 km/h demonstration speed.
+    const latitudeMeters = (end.latitude - start.latitude) * 111_320;
+    const longitudeMeters = (end.longitude - start.longitude) * 110_600;
+    const stepCount = Math.max(1, Math.ceil(Math.hypot(latitudeMeters, longitudeMeters) / 22));
+    for (let step = 0; step < stepCount; step += 1) {
+      const ratio = step / stepCount;
+      points.push({
+        latitude: start.latitude + (end.latitude - start.latitude) * ratio,
+        longitude: start.longitude + (end.longitude - start.longitude) * ratio,
+      });
+    }
+  }
+  points.push(AYEDUASE_ROAD_ROUTE[AYEDUASE_ROAD_ROUTE.length - 1]);
+  return points;
+}
 
 function hasValidTimestamp(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(new Date(value).getTime());
@@ -20,8 +62,19 @@ function distanceBetween(a: TrackingPoint, b: TrackingPoint) {
   return earthRadius * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
 }
 
+function bearingBetween(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }) {
+  const radians = (value: number) => value * Math.PI / 180;
+  const degrees = (value: number) => value * 180 / Math.PI;
+  const deltaLongitude = radians(b.longitude - a.longitude);
+  const y = Math.sin(deltaLongitude) * Math.cos(radians(b.latitude));
+  const x = Math.cos(radians(a.latitude)) * Math.sin(radians(b.latitude))
+    - Math.sin(radians(a.latitude)) * Math.cos(radians(b.latitude)) * Math.cos(deltaLongitude);
+  return (degrees(Math.atan2(y, x)) + 360) % 360;
+}
+
 export function useLocationTracking(isOnline: boolean) {
   const subscription = useRef<Location.LocationSubscription | null>(null);
+  const demoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const flushing = useRef<Promise<void> | null>(null);
   const [state, setState] = useState<ActiveTrackingState | null>(null);
   const stateRef = useRef<ActiveTrackingState | null>(null);
@@ -41,6 +94,11 @@ export function useLocationTracking(isOnline: boolean) {
     subscription.current = null;
   }, []);
 
+  const stopDemo = useCallback(() => {
+    if (demoTimer.current) clearInterval(demoTimer.current);
+    demoTimer.current = null;
+  }, []);
+
   const flush = useCallback(async (current: ActiveTrackingState, force = false) => {
     if (flushing.current) return flushing.current;
     flushing.current = (async () => {
@@ -56,13 +114,12 @@ export function useLocationTracking(isOnline: boolean) {
     return flushing.current;
   }, [persist]);
 
-  const handleLocation = useCallback(async (location: Location.LocationObject) => {
-    const accuracy = location.coords.accuracy;
+  const processPoint = useCallback(async (rawPoint: TrackingPoint) => {
+    const accuracy = rawPoint.accuracyMeters;
     setGpsStatus(accuracy == null ? 'Unavailable' : accuracy <= GPS_MAX_ACCURACY_METERS ? 'Good' : 'Weak');
     const current = stateRef.current;
     if (!current || accuracy == null || accuracy > GPS_MAX_ACCURACY_METERS) return;
 
-    const rawPoint = toGpsPoint(location);
     const previous = current.latestPoint;
     const movementMeters = previous ? distanceBetween(previous, rawPoint) : 0;
     const minimumReliableMovement = previous
@@ -102,10 +159,15 @@ export function useLocationTracking(isOnline: boolean) {
     }
   }, [flush, isOnline, persist]);
 
+  const handleLocation = useCallback(async (location: Location.LocationObject) => {
+    await processPoint(toGpsPoint(location));
+  }, [processPoint]);
+
   const beginWatch = useCallback(async () => {
+    stopDemo();
     stopWatch();
     subscription.current = await watchForegroundLocation((location) => { void handleLocation(location); });
-  }, [handleLocation, stopWatch]);
+  }, [handleLocation, stopDemo, stopWatch]);
 
   const recover = useCallback(async () => {
     try {
@@ -137,8 +199,8 @@ export function useLocationTracking(isOnline: boolean) {
 
   useEffect(() => {
     void recover();
-    return stopWatch;
-  }, [recover, stopWatch]);
+    return () => { stopWatch(); stopDemo(); };
+  }, [recover, stopDemo, stopWatch]);
 
   useEffect(() => {
     if (!isOnline && state?.lifecycle === 'active') {
@@ -162,14 +224,54 @@ export function useLocationTracking(isOnline: boolean) {
         startedAt: hasValidTimestamp(returnedSession.startedAt) ? returnedSession.startedAt : startedAt,
       };
       const next = state?.session.id === session.id
-        ? { ...state, session, lifecycle: 'active' as const }
-        : { session, lifecycle: 'active' as const, route: [], latestPoint: null, distanceMeters: 0, outbox: [] };
+        ? { ...state, session, lifecycle: 'active' as const, source: 'live' as const }
+        : { session, lifecycle: 'active' as const, source: 'live' as const, route: [], latestPoint: null, distanceMeters: 0, outbox: [] };
       await persist(next);
       await handleLocation(initialLocation);
       await beginWatch();
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to start tracking.'); }
     finally { setLoading(false); }
   }, [beginWatch, handleLocation, isOnline, persist, state]);
+
+  const startDemoTracking = useCallback(async () => {
+    if (!isOnline) { setError('Connect to the internet before starting the demonstration.'); return; }
+    setLoading(true); setError(null); stopWatch(); stopDemo();
+    try {
+      const initialLocation = await getCurrentLocationFix();
+      const startedAt = new Date().toISOString();
+      const response = await api.startTrackingSession(startedAt);
+      const returnedSession = response.data?.session;
+      if (!response.success || !returnedSession) throw new Error(response.error ?? 'Unable to start the demonstration.');
+
+      const session = { ...returnedSession, startedAt: hasValidTimestamp(returnedSession.startedAt) ? returnedSession.startedAt : startedAt };
+      const next: ActiveTrackingState = { session, lifecycle: 'active', source: 'demo', route: [], latestPoint: null, distanceMeters: 0, outbox: [] };
+      await persist(next);
+      await handleLocation(initialLocation);
+
+      const demoPath = buildAyeduaseDemoPath();
+      let index = 0;
+      let direction = 1;
+      demoTimer.current = setInterval(() => {
+        const current = stateRef.current;
+        if (!current || current.lifecycle !== 'active' || current.source !== 'demo') { stopDemo(); return; }
+        const coordinate = demoPath[index];
+        const nextIndex = index + direction;
+        const following = demoPath[nextIndex] ?? demoPath[index];
+        if (nextIndex < 0 || nextIndex >= demoPath.length) direction *= -1;
+        else index = nextIndex;
+        void processPoint({
+          clientPointId: Crypto.randomUUID(),
+          latitude: coordinate.latitude,
+          longitude: coordinate.longitude,
+          speedMps: 11.1,
+          headingDegrees: bearingBetween(coordinate, following),
+          accuracyMeters: 5,
+          recordedAt: new Date().toISOString(),
+        });
+      }, DEMO_POINT_INTERVAL_MS);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to start the demonstration.'); }
+    finally { setLoading(false); }
+  }, [handleLocation, isOnline, persist, processPoint, stopDemo, stopWatch]);
 
   const resumeTracking = useCallback(async () => {
     if (!isOnline) { setError('Connect to the internet before resuming tracking.'); return; }
@@ -178,7 +280,7 @@ export function useLocationTracking(isOnline: boolean) {
 
   const stopTracking = useCallback(async () => {
     if (!state) return;
-    setLoading(true); setError(null); stopWatch();
+    setLoading(true); setError(null); stopWatch(); stopDemo();
     const pending = { ...state, lifecycle: 'stopPending' as const };
     await persist(pending);
     try {
@@ -188,7 +290,7 @@ export function useLocationTracking(isOnline: boolean) {
       await persist(null); setGpsStatus('Unavailable');
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to finish tracking.'); }
     finally { setLoading(false); }
-  }, [flush, persist, state, stopWatch]);
+  }, [flush, persist, state, stopDemo, stopWatch]);
 
-  return { state, gpsStatus, error, loading, startTracking, resumeTracking, stopTracking };
+  return { state, gpsStatus, error, loading, startTracking, startDemoTracking, resumeTracking, stopTracking };
 }

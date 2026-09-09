@@ -22,6 +22,8 @@ export type TrackingLifecycle = 'active' | 'pausedOffline' | 'stopPending';
 export type ActiveTrackingState = {
   session: TrackingSession;
   lifecycle: TrackingLifecycle;
+  /** Demo points use the same ingestion flow but are visibly labelled in the app. */
+  source?: 'live' | 'demo';
   route: { latitude: number; longitude: number }[];
   latestPoint: TrackingPoint | null;
   distanceMeters: number;

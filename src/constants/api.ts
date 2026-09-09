@@ -1,4 +1,4 @@
-export const API_BASE_URL = "http://192.168.43.242:3000/api/v1";
+export const API_BASE_URL = "http://192.168.122.1:3000/api/v1";
 export const AUTH_ROLE = "driver" as const;
 export const GPS_BATCH_SIZE = 5;
 export const GPS_MAX_ACCURACY_METERS = 30;
