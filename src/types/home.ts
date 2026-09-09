@@ -21,6 +21,7 @@ export type HomeDashboard = {
     trackingActive: boolean;
   };
   incidents: HomeDashboardIncident[];
+  advisories: { id: string; title: string; description: string; type: string; roadName: string; city: string; startsAt: string }[];
 };
 
 export type HomeDashboardResponse = {

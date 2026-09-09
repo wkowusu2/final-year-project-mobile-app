@@ -1,11 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 
 import { AppHeader, Card, Screen } from '@/src/components/ui';
-import { notifications } from '@/src/data/mock-data';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
 import { NotificationItem } from '@/src/types/app';
+import { api } from '@/src/services/api';
+import { storageService } from '@/src/services/storageService';
 
 const categoryMeta: Record<NotificationItem['category'], { icon: string; color: string; background: string }> = {
   'Traffic Alerts': { icon: 'traffic-light-outline', color: '#D97706', background: '#FFF4DD' },
@@ -14,23 +16,50 @@ const categoryMeta: Record<NotificationItem['category'], { icon: string; color: 
   'Community Notifications': { icon: 'account-group-outline', color: '#0F8A7A', background: '#E4F8F5' },
 };
 
+function relativeTime(isoTimestamp: string) {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(isoTimestamp).getTime()) / 60_000));
+  return minutes < 1 ? 'Just now' : minutes < 60 ? `${minutes} min ago` : minutes < 1_440 ? `${Math.floor(minutes / 60)} hr ago` : `${Math.floor(minutes / 1_440)}d ago`;
+}
+
 export default function NotificationsScreen() {
   const theme = useAppTheme();
-  const [items, setItems] = useState(notifications);
+  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const loadNotifications = useCallback(async (acknowledgeCurrent = false) => {
+    setRefreshing(true);
+    try {
+      const response = await api.getHomeDashboard();
+      if (!response.success || !response.data) throw new Error(response.error ?? 'Unable to load notifications.');
+      const advisoryIds = response.data.advisories.map((advisory) => advisory.id);
+      const seen = new Set(await storageService.getSeenAdvisoryIds());
+      if (acknowledgeCurrent) {
+        advisoryIds.forEach((id) => seen.add(id));
+        await storageService.saveSeenAdvisoryIds([...seen]);
+      }
+      setItems(response.data.advisories.map((advisory) => ({
+        id: advisory.id, category: 'Route Updates', title: advisory.title,
+        message: `${advisory.description} · ${advisory.roadName}, ${advisory.city}`,
+        time: relativeTime(advisory.startsAt), unread: !seen.has(advisory.id),
+      })));
+    } finally { setRefreshing(false); }
+  }, []);
+  useFocusEffect(useCallback(() => { void loadNotifications(true); }, [loadNotifications]));
   const unreadCount = useMemo(() => items.filter((item) => item.unread).length, [items]);
   const unreadItems = items.filter((item) => item.unread);
   const earlierItems = items.filter((item) => !item.unread);
 
   function markAsRead(id: string) {
     setItems((current) => current.map((item) => item.id === id ? { ...item, unread: false } : item));
+    void storageService.getSeenAdvisoryIds().then((seen) => storageService.saveSeenAdvisoryIds([...new Set([...seen, id])]));
   }
 
   function markAllAsRead() {
     setItems((current) => current.map((item) => ({ ...item, unread: false })));
+    void storageService.getSeenAdvisoryIds().then((seen) => storageService.saveSeenAdvisoryIds([...new Set([...seen, ...items.map((item) => item.id)])]));
   }
 
   return (
-    <Screen scrollable>
+    <Screen scrollable refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadNotifications(false)} tintColor={theme.primary} />}>
       <AppHeader
         title="Notifications"
         subtitle={unreadCount ? `${unreadCount} new update${unreadCount === 1 ? '' : 's'} for your drive` : 'You are all caught up'}
@@ -59,6 +88,7 @@ export default function NotificationsScreen() {
 
       {unreadItems.length ? <NotificationSection title="NEW" items={unreadItems} onPress={markAsRead} /> : null}
       {earlierItems.length ? <NotificationSection title={unreadItems.length ? 'EARLIER' : 'RECENT'} items={earlierItems} onPress={markAsRead} /> : null}
+      {!items.length && !refreshing ? <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No active government advisories right now.</Text> : null}
     </Screen>
   );
 }
@@ -118,6 +148,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 11, fontWeight: '900', letterSpacing: 1 },
   notificationList: { gap: 10 },
   notificationCard: { minHeight: 104, borderWidth: 1, borderRadius: 20, padding: 13, flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
+  emptyText: { textAlign: 'center', fontSize: 13, fontWeight: '600', paddingVertical: 22 },
   categoryIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   notificationCopy: { flex: 1, gap: 3 },
   notificationMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },

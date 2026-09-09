@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppTheme } from "@/src/hooks/useAppTheme";
 import { getDetectedLocation, getLastKnownDetectedLocation } from "@/src/services/locationService";
 import { api } from "@/src/services/api";
+import { storageService } from "@/src/services/storageService";
 import { HomeDashboard } from "@/src/types/home";
 
 const quickActions = [
@@ -69,6 +70,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [locationLabel, setLocationLabel] = useState<string | null>(null);
+  const [unreadAdvisoryCount, setUnreadAdvisoryCount] = useState(0);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
@@ -77,6 +79,8 @@ export default function HomeScreen() {
       if (!response.success || !response.data)
         throw new Error(response.error ?? "Unable to load your dashboard.");
       setDashboard(response.data);
+      const seen = new Set(await storageService.getSeenAdvisoryIds());
+      setUnreadAdvisoryCount(response.data.advisories.filter((advisory) => !seen.has(advisory.id)).length);
       setError(null);
     } catch (caught) {
       setError(
@@ -181,7 +185,7 @@ export default function HomeScreen() {
             name="bell-outline"
             size={22}
           />
-          <View style={styles.notificationDot} />
+          {unreadAdvisoryCount ? <View style={styles.notificationDot}><Text style={styles.notificationCount}>{unreadAdvisoryCount > 9 ? '9+' : unreadAdvisoryCount}</Text></View> : null}
         </Pressable>
       </View>
 
@@ -520,13 +524,17 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 11,
     right: 11,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 3,
     backgroundColor: "#F04438",
     borderWidth: 1.5,
     borderColor: "#FFFFFF",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  notificationCount: { color: '#FFFFFF', fontSize: 9, fontWeight: '900' },
   tripCard: {
     backgroundColor: "#5420CD",
     borderRadius: 26,

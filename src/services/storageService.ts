@@ -18,6 +18,7 @@ const KEYS = {
   doneOnBoarding: 'roadpulse.doneOnBoarding',
   activeTracking: 'roadpulse.activeTracking',
   themePreference: 'roadpulse.themePreference',
+  seenAdvisoryIds: 'roadpulse.seenAdvisoryIds',
 };
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -93,6 +94,12 @@ export const storageService = {
   getActiveTracking() {
     return readJson<ActiveTrackingState | null>(KEYS.activeTracking, null);
   },
+  getSeenAdvisoryIds() {
+    return readJson<string[]>(KEYS.seenAdvisoryIds, []);
+  },
+  saveSeenAdvisoryIds(ids: string[]) {
+    return AsyncStorage.setItem(KEYS.seenAdvisoryIds, JSON.stringify(ids.slice(-100)));
+  },
   clearActiveTracking() {
     return AsyncStorage.removeItem(KEYS.activeTracking);
   },
@@ -114,6 +121,7 @@ export const storageService = {
       KEYS.hasProfile,
       KEYS.fullName,
       KEYS.doneOnBoarding,
+      KEYS.seenAdvisoryIds,
     ]);
     await this.clearTokens();
   },

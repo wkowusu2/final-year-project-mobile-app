@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { radius, shadows, spacing, typography } from '@/src/constants/design';
 import { useAppTheme } from '@/src/hooks/useAppTheme';
 
-export function Screen({ children, scrollable = false, style }: PropsWithChildren<{ scrollable?: boolean; style?: StyleProp<ViewStyle> }>) {
+export function Screen({ children, scrollable = false, style, refreshControl }: PropsWithChildren<{ scrollable?: boolean; style?: StyleProp<ViewStyle>; refreshControl?: ReactNode }>) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
   const safeAreaStyle = {
@@ -33,6 +33,7 @@ export function Screen({ children, scrollable = false, style }: PropsWithChildre
           style,
           safeAreaStyle,
         ]}
+        refreshControl={refreshControl}
         showsVerticalScrollIndicator={false}>
         {children}
       </ScrollView>
